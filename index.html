@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Basgiath — Standing &amp; Reputation</title>
+<title>D&amp;D NPC Honor Tracker</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Spectral:wght@300;400;600&display=swap" rel="stylesheet">
@@ -148,11 +148,15 @@
   .rep-top{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px}
   .rep-lbl{font-size:.6rem; text-transform:uppercase; letter-spacing:.14em; color:var(--gold-dim); font-family:'Cinzel',serif}
   .rep-val{font-family:'Cinzel',serif; font-size:.92rem; font-weight:600}
+  .rep-shell{position:relative}
   .rep-track{position:relative; height:10px; background:var(--ink); border:1px solid var(--edge); border-radius:6px; overflow:hidden}
   .rep-mid{position:absolute; left:50%; top:0; bottom:0; width:1px; background:var(--edge2); z-index:2}
   .rep-fill{position:absolute; top:0; bottom:0; transition:left .5s cubic-bezier(.2,.8,.2,1), width .5s cubic-bezier(.2,.8,.2,1)}
   .rep-fill.p{background:linear-gradient(90deg,var(--pos),var(--pos-bright))}
   .rep-fill.n{background:linear-gradient(90deg,var(--blood-bright),var(--blood))}
+  .rep-dot{position:absolute; top:5px; width:14px; height:14px; border-radius:50%;
+    background:var(--parch); border:2px solid #1a1510; box-shadow:0 0 0 1px var(--gold), 0 2px 5px rgba(0,0,0,.6);
+    transform:translate(-50%,-50%); z-index:4; transition:left .5s cubic-bezier(.2,.8,.2,1); pointer-events:none}
   .rep-words{display:flex; justify-content:space-between; margin-top:3px}
   .rep-words span{font-size:.58rem; color:var(--txt-faint); letter-spacing:.06em}
 
@@ -237,8 +241,8 @@
 <div id="login">
   <div class="login-card">
     <svg class="crest" viewBox="0 0 48 48" fill="none"><path d="M24 2l18 7v12c0 11-7.5 19-18 25C13.5 40 6 32 6 21V9l18-7z" stroke="#c9a24b" stroke-width="1.5" fill="rgba(201,162,75,.05)"/><path d="M24 12v20M16 19l8 5 8-5" stroke="#c9a24b" stroke-width="1.2"/></svg>
-    <h1>Basgiath War College</h1>
-    <div class="login-sub">Records of Standing &amp; Reputation</div>
+    <h1>D&amp;D NPC Honor Tracker</h1>
+    <div class="login-sub">Certain records may not be fully accurate.</div>
     <div class="field">
       <label for="char">Your Character</label>
       <select id="char"><option value="">Loading rolls…</option></select>
@@ -257,7 +261,7 @@
   <header class="topbar">
     <div class="brand">
       <svg class="crest" viewBox="0 0 48 48" fill="none"><path d="M24 2l18 7v12c0 11-7.5 19-18 25C13.5 40 6 32 6 21V9l18-7z" stroke="#c9a24b" stroke-width="1.5" fill="rgba(201,162,75,.05)"/><path d="M24 12v20M16 19l8 5 8-5" stroke="#c9a24b" stroke-width="1.2"/></svg>
-      <div><h1>The Reputation Vault</h1><small>Basgiath War College</small></div>
+      <div><h1>D&amp;D NPC Honor Tracker</h1><small>Basgiath War College</small></div>
     </div>
     <div class="whoami" id="whoami"></div>
     <button class="topbtn" id="pwBtn">Change Passphrase</button>
@@ -422,8 +426,10 @@ function repBar(v){
   const pct = Math.abs(v)/20*50;
   const cls = v>=0?"p":"n";
   const left = v>=0?50:50-pct;
-  return `<div class="rep-track"><div class="rep-mid"></div>
-    <div class="rep-fill ${cls}" style="left:${left}%;width:${pct}%"></div></div>`;
+  const dotPos = (v+20)/40*100; // 0..100% across the track
+  return `<div class="rep-shell"><div class="rep-track"><div class="rep-mid"></div>
+    <div class="rep-fill ${cls}" style="left:${left}%;width:${pct}%"></div></div>
+    <div class="rep-dot" style="left:${dotPos}%"></div></div>`;
 }
 
 function cardHTML(n){
@@ -443,14 +449,38 @@ function cardHTML(n){
   </div>`;
 }
 
-function posText(n){
-  // cadet position line (wing/section/squad) — NO dragon data
-  const bits = [];
-  if(n.wing) bits.push("Wing "+n.wing);
-  if(n.section) bits.push(n.section+" Section");
-  if(n.squad) bits.push(n.squad+" Squad");
-  return bits.join(" · ");
+function ordinal(n){
+  n = parseInt(n);
+  if(isNaN(n)) return null;
+  const s=["th","st","nd","rd"], v=n%100;
+  return n + (s[(v-20)%10] || s[v] || s[0]);
 }
+// Build the formation label in the order: [Squad] [Section] [Wing]
+// e.g. "1st Squad Flame Section 1st Wing", "Leadership 1st Wing",
+//      "Leadership Flame Section 1st Wing"
+function formationLabel(n){
+  const bits = [];
+  // squad: stored like "1st", "2nd" OR the role itself may be Leadership
+  if(n.squad){
+    const sq = /^\d/.test(n.squad) ? n.squad : (ordinal(n.squad)||n.squad);
+    bits.push(sq + " Squad");
+  }
+  // detect leadership rows (section === "Leadership" in the data)
+  const isLeadership = n.section && /leadership/i.test(n.section);
+  if(isLeadership){
+    bits.push("Leadership");
+  } else if(n.section){
+    bits.push(n.section + " Section");
+  }
+  if(n.wing){
+    const w = ordinal(n.wing) || ("Wing "+n.wing);
+    bits.push(w + " Wing");
+  }
+  return bits.join(" ");
+}
+function posText(n){ return formationLabel(n); }
+// Header label for grouping in the roster — same ordered formation string
+function formationSectionHeader(n){ return formationLabel(n) || "—"; }
 
 function render(){
   const list = filtered();
@@ -458,13 +488,29 @@ function render(){
   const main = document.getElementById("main");
   if(!list.length){ main.innerHTML = `<div class="empty">No records match your search.</div>`; return; }
 
+  // When an explicit sort is chosen, show a flat sorted grid so the sort is visible.
+  if(F.sort !== "default"){
+    const label = {name:"Name (A–Z)", role:"Role", rep_hi:"Reputation (high→low)", rep_lo:"Reputation (low→high)"}[F.sort] || "Sorted";
+    let html = `<section class="grp"><div class="grp-head"><h2>${esc(label)}</h2><div class="rule"></div><span class="gcount">${list.length}</span></div>`;
+    html += `<div class="subgrp"><div class="cards">` + list.map(cardHTML).join("") + `</div></div></section>`;
+    main.innerHTML = html;
+    main.querySelectorAll(".card").forEach(c=>c.addEventListener("click",()=>openSide(c.dataset.id)));
+    return;
+  }
+
   // group by grp, then subgroup, preserving order
   const groups = [];
   const gmap = {};
   for(const n of list){
     const g = n.grp || "Unaffiliated";
     if(!gmap[g]){ gmap[g]={name:g, subs:{}, order:[]}; groups.push(gmap[g]); }
-    const sg = n.subgroup || "—";
+    // formation-based label for cadet rows (wing/section present); else stored subgroup
+    let sg;
+    if(n.wing || (n.section && /leadership/i.test(n.section))){
+      sg = formationSectionHeader(n);
+    } else {
+      sg = n.subgroup || "—";
+    }
     if(!gmap[g].subs[sg]){ gmap[g].subs[sg]=[]; gmap[g].order.push(sg); }
     gmap[g].subs[sg].push(n);
   }
