@@ -182,6 +182,10 @@
   .detail-row .k{color:var(--gold-dim); font-family:'Cinzel',serif; font-size:.66rem; text-transform:uppercase; letter-spacing:.12em; padding-top:3px; white-space:nowrap}
   .detail-row .v{color:var(--parch); text-align:right}
   .notes-h{font-family:'Cinzel',serif; font-size:.7rem; text-transform:uppercase; letter-spacing:.16em; color:var(--gold-dim); margin:18px 0 8px}
+  .pubnote{margin-top:18px; padding:13px 15px; border:1px solid var(--gold-dim); border-left:3px solid var(--gold);
+    border-radius:var(--rad); background:rgba(201,162,75,.06)}
+  .pubnote-h{font-family:'Cinzel',serif; font-size:.64rem; text-transform:uppercase; letter-spacing:.16em; color:var(--gold); margin-bottom:6px}
+  .pubnote-body{color:var(--parch); font-size:.96rem; line-height:1.5; white-space:pre-wrap}
   textarea.notes{width:100%; min-height:120px; resize:vertical; background:var(--ink); border:1px solid var(--edge);
     border-radius:var(--rad); color:var(--txt); padding:11px 12px; font-size:.96rem; line-height:1.5}
   textarea.notes:focus{outline:none; border-color:var(--gold-dim)}
@@ -242,7 +246,7 @@
   <div class="login-card">
     <svg class="crest" viewBox="0 0 48 48" fill="none"><path d="M24 2l18 7v12c0 11-7.5 19-18 25C13.5 40 6 32 6 21V9l18-7z" stroke="#c9a24b" stroke-width="1.5" fill="rgba(201,162,75,.05)"/><path d="M24 12v20M16 19l8 5 8-5" stroke="#c9a24b" stroke-width="1.2"/></svg>
     <h1>D&amp;D NPC Honor Tracker</h1>
-    <div class="login-sub">Certain records may not be fully accurate.</div>
+    <div class="login-sub">Certain records may not be fully accurate</div>
     <div class="field">
       <label for="char">Your Character</label>
       <select id="char"><option value="">Loading rolls…</option></select>
@@ -555,7 +559,11 @@ function openSide(id){
   if(n.signet) rows.push(["Signet", n.signet]);
   if(n.second_signet) rows.push(["Second Signet", n.second_signet]);
   if(n.status) rows.push(["Status", n.status]);
-  if(ME.is_dm && n.dm_notes) rows.push(["DM Notes", n.dm_notes]);
+
+  // Public note (set by DM, visible to everyone)
+  const publicNoteBlock = n.public_note
+    ? `<div class="pubnote"><div class="pubnote-h">Note from the DM</div><div class="pubnote-body">${esc(n.public_note)}</div></div>`
+    : "";
 
   let html = `${portrait}
     <div class="side-name">${esc(n.name)}</div>
@@ -567,6 +575,7 @@ function openSide(id){
     </div>
     <div class="side-sep"></div>
     ${rows.map(r=>`<div class="detail-row"><span class="k">${esc(r[0])}</span><span class="v">${esc(r[1])}</span></div>`).join("")}
+    ${publicNoteBlock}
     <div class="notes-h">Your Private Notes</div>
     <textarea class="notes" id="noteArea" placeholder="Only you can see these…">${esc(STATE.notes[id]||"")}</textarea>
     <div class="notes-save" id="noteSave"></div>`;
@@ -604,6 +613,7 @@ function dmSidebarHTML(n){
     <div class="dm-actions">
       <button class="mini-btn" id="dmEdit">Edit NPC</button>
       <button class="mini-btn" id="dmPortrait">Portrait</button>
+      <button class="mini-btn" id="dmDeceased">${n.deceased?"Mark Alive":"Mark Deceased"}</button>
       <button class="mini-btn danger" id="dmDelete">Delete</button>
     </div>
   </div>`;
@@ -612,6 +622,17 @@ function dmSidebarHTML(n){
 async function wireDMSidebar(n){
   document.getElementById("dmEdit").onclick=()=>openEditor(n);
   document.getElementById("dmPortrait").onclick=()=>openPortrait(n);
+  document.getElementById("dmDeceased").onclick=async()=>{
+    const nowDead = !n.deceased;
+    try{
+      await api("upsert_npc",{npc:{ id:n.id, deceased:nowDead, status: nowDead?"Deceased":"Active" }});
+      n.deceased = nowDead; n.status = nowDead?"Deceased":"Active";
+      const local = STATE.npcs.find(x=>x.id===n.id);
+      if(local){ local.deceased=nowDead; local.status=n.status; }
+      toast(nowDead?"Marked deceased":"Marked alive");
+      render(); openSide(n.id);
+    }catch(e){ toast("Error: "+e.message); }
+  };
   document.getElementById("dmDelete").onclick=async()=>{
     if(!confirm(`Delete "${n.name}" permanently? This removes the NPC and all standings/notes for every player.`)) return;
     try{ await api("delete_npc",{npc_id:n.id}); toast("NPC deleted"); closeSide(); await refreshState(); }
@@ -658,8 +679,44 @@ async function refreshSilently(){
 }
 
 // ---------- DM EDITOR MODAL ----------
-const GENDER=null;
 function field(label,id,val,type="text"){ return `<div class="ff"><label>${label}</label><input id="${id}" type="${type}" value="${esc(val??"")}"/></div>`; }
+
+// distinct non-null values of a field across all NPCs, sorted
+function distinctVals(key){
+  const s = new Set();
+  for(const n of STATE.npcs){ const v=n[key]; if(v!==null && v!==undefined && v!=="") s.add(String(v)); }
+  return [...s].sort((a,b)=>a.localeCompare(b, undefined, {numeric:true}));
+}
+
+// dropdown of existing values + "Other…" that reveals a free-text input
+function selectField(label,id,val,key,extra){
+  let opts = distinctVals(key);
+  if(extra) extra.forEach(e=>{ if(!opts.includes(e)) opts.push(e); });
+  const cur = (val==null||val==="")?"":String(val);
+  const known = cur==="" || opts.includes(cur);
+  const optionHTML = `<option value="">— none —</option>` +
+    opts.map(o=>`<option value="${esc(o)}"${o===cur?" selected":""}>${esc(o)}</option>`).join("") +
+    `<option value="__other__"${!known?" selected":""}>Other / new…</option>`;
+  return `<div class="ff">
+    <label>${label}</label>
+    <select id="${id}" data-other="${id}_other" onchange="onSelectFieldChange(this)">${optionHTML}</select>
+    <input id="${id}_other" class="sf-other" type="text" placeholder="Type a new ${label.toLowerCase()}…"
+      value="${known?"":esc(cur)}" style="margin-top:7px;display:${known?"none":"block"}"/>
+  </div>`;
+}
+function onSelectFieldChange(sel){
+  const other=document.getElementById(sel.dataset.other);
+  if(!other) return;
+  other.style.display = sel.value==="__other__" ? "block" : "none";
+  if(sel.value==="__other__") other.focus();
+}
+// read a selectField value: custom text if "Other…", else the dropdown value
+function readSelectField(id){
+  const sel=document.getElementById(id);
+  if(!sel) return "";
+  if(sel.value==="__other__"){ const o=document.getElementById(id+"_other"); return o?o.value.trim():""; }
+  return sel.value.trim();
+}
 
 function openEditor(n){ // n null => new
   const isNew = !n;
@@ -671,17 +728,17 @@ function openEditor(n){ // n null => new
     <div class="fgrid">
       ${field("Name","e_name",n.name)}
       ${field("Role","e_role",n.role)}
-      ${field("Group","e_grp",n.grp)}
-      ${field("Subgroup","e_sub",n.subgroup)}
+      ${selectField("Group","e_grp",n.grp,"grp")}
+      ${selectField("Subgroup","e_sub",n.subgroup,"subgroup")}
       ${field("Wing (#)","e_wing",n.wing,"number")}
-      ${field("Section","e_section",n.section)}
-      ${field("Squad","e_squad",n.squad)}
-      ${field("Year","e_year",n.year)}
+      ${selectField("Section","e_section",n.section,"section",["Leadership"])}
+      ${selectField("Squad","e_squad",n.squad,"squad",["1st","2nd","3rd"])}
+      ${selectField("Year","e_year",n.year,"year",["1","2","3","4"])}
       ${field("Signet","e_signet",n.signet)}
       ${field("Second Signet","e_signet2",n.second_signet)}
-      <div class="ff"><label>Status</label><input id="e_status" value="${esc(n.status||"Active")}"/></div>
+      ${field("Status","e_status",n.status||"Active")}
       <div class="ff"><label>Deceased?</label><select id="e_dead"><option value="false"${!n.deceased?" selected":""}>No</option><option value="true"${n.deceased?" selected":""}>Yes</option></select></div>
-      <div class="ff full"><label>DM Notes (private to DM)</label><textarea id="e_dmnotes" rows="2">${esc(n.dm_notes||"")}</textarea></div>
+      <div class="ff full"><label>Public Note (shown to all players)</label><textarea id="e_pubnote" rows="2" placeholder="e.g. Last seen in Luceras. Offering a bounty for information.">${esc(n.public_note||"")}</textarea></div>
     </div>
     <div class="modal-actions">
       <button class="mini-btn" id="e_cancel">Cancel</button>
@@ -692,11 +749,13 @@ function openEditor(n){ // n null => new
   document.getElementById("e_save").onclick=async()=>{
     const g = id=>document.getElementById(id).value.trim();
     const npc = {
-      name:g("e_name"), role:g("e_role")||null, grp:g("e_grp")||null, subgroup:g("e_sub")||null,
-      wing: g("e_wing")? parseInt(g("e_wing")) : null, section:g("e_section")||null, squad:g("e_squad")||null,
-      year:g("e_year")||null, signet:g("e_signet")||null, second_signet:g("e_signet2")||null,
+      name:g("e_name"), role:g("e_role")||null,
+      grp:readSelectField("e_grp")||null, subgroup:readSelectField("e_sub")||null,
+      wing: g("e_wing")? parseInt(g("e_wing")) : null,
+      section:readSelectField("e_section")||null, squad:readSelectField("e_squad")||null,
+      year:readSelectField("e_year")||null, signet:g("e_signet")||null, second_signet:g("e_signet2")||null,
       status:g("e_status")||"Active", deceased: document.getElementById("e_dead").value==="true",
-      dm_notes:g("e_dmnotes")||null,
+      public_note:g("e_pubnote")||null,
     };
     if(!npc.name){ toast("Name required"); return; }
     if(!isNew) npc.id = n.id;
