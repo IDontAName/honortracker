@@ -184,6 +184,18 @@
   .detail-row .k{color:var(--gold-dim); font-family:'Cinzel',serif; font-size:.66rem; text-transform:uppercase; letter-spacing:.12em; padding-top:3px; white-space:nowrap}
   .detail-row .v{color:var(--parch); text-align:right}
   .notes-h{font-family:'Cinzel',serif; font-size:.7rem; text-transform:uppercase; letter-spacing:.16em; color:var(--gold-dim); margin:18px 0 8px}
+  .honor-chip{display:inline-block;cursor:pointer;background:rgba(201,162,75,.12);border:1px solid var(--gold-dim);color:var(--gold);
+    padding:3px 10px;border-radius:12px;font-family:'Cinzel',serif;font-size:.75rem;letter-spacing:.06em;margin-left:10px}
+  .honor-chip:hover{background:rgba(201,162,75,.2)}
+  .honor-tag{font-size:.65rem;color:var(--gold-dim);margin-left:4px;cursor:help}
+  .honor-note{margin:8px 0 0;padding:7px 10px;background:rgba(201,162,75,.08);border-left:2px solid var(--gold-dim);
+    border-radius:3px;font-size:.82rem;color:var(--gold-dim);font-style:italic}
+  .honor-sub{font-size:.68rem;color:var(--gold-dim);margin-left:6px;white-space:nowrap;font-style:italic}
+  .acct-table{width:100%;border-collapse:collapse;font-size:.9rem;margin-top:8px}
+  .acct-table th{text-align:left;color:var(--gold-dim);font-family:'Cinzel',serif;font-size:.66rem;text-transform:uppercase;letter-spacing:.12em;
+    padding:7px 10px;border-bottom:1px solid var(--edge)}
+  .acct-table td{padding:8px 10px;border-bottom:1px solid var(--edge);color:var(--parch);vertical-align:middle}
+  .acct-table tr:hover td{background:rgba(255,255,255,.02)}
   .pubnote{margin-top:18px; padding:13px 15px; border:1px solid var(--gold-dim); border-left:3px solid var(--gold);
     border-radius:var(--rad); background:rgba(201,162,75,.06)}
   .pubnote-h{font-family:'Cinzel',serif; font-size:.64rem; text-transform:uppercase; letter-spacing:.16em; color:var(--gold); margin-bottom:6px}
@@ -371,10 +383,11 @@ const STORAGE_PUBLIC = "https://adqnhmmgrrptiljuvnwv.supabase.co/storage/v1/obje
 const TKEY = "basgiath_session_v1";
 
 let TOKEN = localStorage.getItem(TKEY) || null;
-let ME = { name:null, is_dm:false };
-let STATE = { npcs:[], scores:{}, notes:{} };
+let ME = { name:null, is_dm:false, honor_score:0 };
+let STATE = { npcs:[], scores:{}, notes:{}, honor_score:0 };
 let selectedId = null;
 let reorderMode = false;
+let previewMode = null; // { name, honor_score } when DM is previewing as player
 let players = []; // DM
 
 // ---------- API helper ----------
@@ -415,7 +428,7 @@ async function doLogin(){
   try{
     const r = await api("login", { character_name, password });
     TOKEN = r.token; localStorage.setItem(TKEY, TOKEN);
-    ME = { name:r.character_name, is_dm:r.is_dm };
+    ME = { name:r.character_name, is_dm:r.is_dm, honor_score: r.honor_score ?? 0 };
     await enterApp();
   }catch(e){ err.textContent = e.message; }
 }
@@ -424,7 +437,7 @@ async function tryResume(){
   if(!TOKEN) return false;
   try{
     const r = await api("me");
-    ME = { name:r.character_name, is_dm:r.is_dm };
+    ME = { name:r.character_name, is_dm:r.is_dm, honor_score: r.honor_score ?? 0 };
     await enterApp(); return true;
   }catch(e){ TOKEN=null; localStorage.removeItem(TKEY); return false; }
 }
@@ -432,8 +445,7 @@ async function tryResume(){
 async function enterApp(){
   document.getElementById("login").style.display="none";
   document.getElementById("app").style.display="block";
-  document.getElementById("whoami").innerHTML =
-    `Logged in as <b>${esc(ME.name)}</b>${ME.is_dm?'<span class="badge-dm">DM</span>':''}`;
+  updateWhoami();
   if(ME.is_dm){
     try{ players = (await api("list_players")).players.filter(p=>!p.is_dm); }catch(e){}
     addDMRosterButton();
@@ -441,11 +453,27 @@ async function enterApp(){
   await refreshState();
 }
 
+function updateWhoami(previewName){
+  const el = document.getElementById("whoami");
+  if(previewName){
+    el.innerHTML = `<span style="color:var(--blood-bright)">Previewing as</span> <b>${esc(previewName)}</b> <button class="mini-btn" onclick="exitPreview()" style="margin-left:8px">Exit Preview</button>`;
+  } else if(ME.is_dm){
+    el.innerHTML = `Logged in as <b>${esc(ME.name)}</b><span class="badge-dm">DM</span>`;
+  } else {
+    const h = ME.honor_score ?? 0;
+    el.innerHTML = `Logged in as <b>${esc(ME.name)}</b> &nbsp;
+      <span class="honor-chip" onclick="showHonorExplain()" title="Click to learn how Honor works">
+        ⚔ ${h} Honor</span>`;
+  }
+}
+
 async function refreshState(){
   const r = await api("get_state");
   STATE.npcs = r.npcs || [];
   STATE.scores = r.scores || {};
   STATE.notes = r.notes || {};
+  STATE.honor_score = r.honor_score ?? 0;
+  if(!ME.is_dm) ME.honor_score = STATE.honor_score;
   buildGroupFilter();
   render();
 }
@@ -459,7 +487,15 @@ function buildGroupFilter(){
   sel.innerHTML = '<option value="">All</option>' + groups.map(g=>`<option value="${esc(g)}">${esc(g)}</option>`).join("");
 }
 
-function repOf(id){ return STATE.scores[id] ?? 0; }
+function repOf(id){ return STATE.scores[id] ?? 0; } // raw DM-set value
+function honorBonus(){ return Math.round(STATE.honor_score / 10); }
+// Effective displayed score: add honor to 0..10 range, cap at 10
+function effectiveScore(id){
+  const base = repOf(id);
+  const bonus = honorBonus();
+  if(bonus === 0 || base < 0 || base > 10) return base;
+  return Math.min(10, base + bonus);
+}
 
 function filtered(){
   let list = STATE.npcs.slice();
@@ -497,7 +533,9 @@ function repBar(v){
 }
 
 function cardHTML(n){
-  const v = repOf(n.id);
+  const base = repOf(n.id);
+  const v = effectiveScore(n.id);
+  const hasBonus = v !== base && !ME.is_dm && !previewMode?.isDM;
   const pos = posText(n);
   if(reorderMode){
     return `<div class="card reorder ${n.deceased?'dead':''}" data-id="${n.id}">
@@ -519,7 +557,7 @@ function cardHTML(n){
     ${n.status?`<span class="status">${esc(n.status)}</span>`:''}
     <div class="rep">
       <div class="rep-top"><span class="rep-lbl">Standing</span>
-        <span class="rep-val" style="color:${repColor(v)}">${v>0?'+':''}${v} · ${repWord(v)}</span></div>
+        <span class="rep-val" style="color:${repColor(v)}">${v>0?'+':''}${v} · ${repWord(v)}${hasBonus?` <span class="honor-tag" title="Includes +${v-base} Honor bonus">⚔</span>`:""}</span></div>
       ${repBar(v)}
       <div class="rep-words"><span>−20</span><span>0</span><span>+20</span></div>
     </div>
@@ -659,17 +697,19 @@ function openSide(id){
   const n = STATE.npcs.find(x=>x.id===id); if(!n) return;
   selectedId = id;
   document.querySelectorAll(".card").forEach(c=>c.classList.toggle("sel", c.dataset.id===id));
-  const v = repOf(id);
+  const base = repOf(id);
+  const v = effectiveScore(id);
+  const bonus = v - base;
   const inner = document.getElementById("sideInner");
 
   let portrait = "";
   if(n.portrait_path){
-    portrait = `<div class="portrait-wrap"><img src="${STORAGE_PUBLIC}${esc(n.portrait_path)}" alt="" onerror="this.parentNode.innerHTML='<div class=\\'portrait-ph\\'>?</div>'"/></div>`;
+    portrait = `<div class="portrait-wrap" style="background:#fff"><img src="${STORAGE_PUBLIC}${esc(n.portrait_path)}" alt="" onerror="this.parentNode.innerHTML='<div class=\\'portrait-ph\\'>?</div>'"/></div>`;
   } else {
     portrait = `<div class="portrait-wrap"><div class="portrait-ph">${esc((n.name||'?').charAt(0))}</div></div>`;
   }
 
-  // details — explicitly NO dragon fields
+  // details
   const rows = [];
   if(n.role) rows.push(["Role", n.role]);
   const pos = posText(n); if(pos) rows.push(["Position", pos]);
@@ -677,11 +717,20 @@ function openSide(id){
   if(n.signet) rows.push(["Signet", n.signet]);
   if(n.second_signet) rows.push(["Second Signet", n.second_signet]);
   if(n.status) rows.push(["Status", n.status]);
+  // Dragon: show name(nick) and gender, no age
+  if(n.dragon){
+    const genderMatch = n.dragon.match(/^\(([MFmf])\)/);
+    const gender = genderMatch ? (genderMatch[1].toUpperCase()==='M'?'♂':'♀') : '';
+    const dragonName = n.dragon_nick || n.dragon.replace(/^\([MFmf]\)\s*/, '').trim();
+    rows.push(["Bonded", `${gender} ${dragonName}`.trim()]);
+  }
 
-  // Public note (set by DM, visible to everyone)
   const publicNoteBlock = n.public_note
     ? `<div class="pubnote"><div class="pubnote-h">Note from the DM</div><div class="pubnote-body">${esc(n.public_note)}</div></div>`
     : "";
+
+  const honorNote = (!ME.is_dm && bonus > 0)
+    ? `<div class="honor-note">⚔ +${bonus} Honor bonus applied (${STATE.honor_score}/100 honor)</div>` : "";
 
   let html = `${portrait}
     <div class="side-name">${esc(n.name)}</div>
@@ -691,6 +740,7 @@ function openSide(id){
       ${repBar(v)}
       <div class="rep-words"><span>−20</span><span>0</span><span>+20</span></div>
     </div>
+    ${honorNote}
     <div class="side-sep"></div>
     ${rows.map(r=>`<div class="detail-row"><span class="k">${esc(r[0])}</span><span class="v">${esc(r[1])}</span></div>`).join("")}
     ${publicNoteBlock}
@@ -771,16 +821,31 @@ async function loadDMPlayers(n){
     const { players:pl, scores } = await api("dm_scores_for_npc",{npc_id:n.id});
     const box = document.getElementById("dmPlayers"); if(!box) return;
     box.innerHTML = pl.map(p=>{
-      const v = scores[p.id] ?? 0;
-      return `<div class="pl-row" data-aid="${p.id}">
+      const baseVal = scores[p.id] ?? 0;
+      const honor = p.honor_score ?? 0;
+      const honorBonus = Math.round(honor/10);
+      const effective = (baseVal >= 0 && baseVal <= 10 && honorBonus > 0) ? Math.min(10, baseVal + honorBonus) : baseVal;
+      const showBonus = effective !== baseVal;
+      return `<div class="pl-row" data-aid="${p.id}" data-honor="${honor}">
         <span class="pn">${esc(p.character_name)}</span>
-        <input type="range" min="-20" max="20" value="${v}" />
-        <span class="pv" style="color:${repColor(v)}">${v>0?'+':''}${v}</span></div>`;
+        <input type="range" min="-20" max="20" value="${baseVal}" />
+        <span class="pv" style="color:${repColor(baseVal)}">${baseVal>0?'+':''}${baseVal}</span>
+        ${showBonus?`<span class="honor-sub" title="With ⚔${honor} honor: effectively ${effective>0?'+':''}${effective}">⚔+${honorBonus}→${effective>0?'+':''}${effective}</span>`:''}
+      </div>`;
     }).join("");
     box.querySelectorAll(".pl-row").forEach(row=>{
       const rng=row.querySelector("input"), pv=row.querySelector(".pv"), aid=row.dataset.aid;
+      const honor=parseInt(row.dataset.honor||"0");
+      const hb=Math.round(honor/10);
       let t=null;
-      rng.addEventListener("input",()=>{ const v=+rng.value; pv.textContent=(v>0?'+':'')+v; pv.style.color=repColor(v);
+      rng.addEventListener("input",()=>{
+        const v=+rng.value; pv.textContent=(v>0?'+':'')+v; pv.style.color=repColor(v);
+        // update the honor sub note
+        const sub=row.querySelector(".honor-sub");
+        if(sub){
+          if(v>=0 && v<=10 && hb>0){ const eff=Math.min(10,v+hb); sub.textContent=`⚔+${hb}→${eff>0?'+':''}${eff}`; sub.style.display=''; }
+          else { sub.style.display='none'; }
+        }
         clearTimeout(t); t=setTimeout(async()=>{
           try{ await api("set_score",{target_account_id:aid, npc_id:n.id, value:v});
             if(aid===MY_ACCOUNT_ID){ STATE.scores[n.id]=v; } }catch(e){ toast("save failed"); }
@@ -956,6 +1021,9 @@ function addDMRosterButton(){
   const mk=(id,label,fn)=>{ const b=document.createElement("button"); b.className="topbtn"; b.id=id; b.textContent=label; b.onclick=fn; bar.insertBefore(b, anchor); };
   mk("dmAddBtn","+ Add NPC",()=>openEditor(null));
   mk("dmReorderBtn","Reorder",toggleReorder);
+  mk("dmRenameBtn","Rename Labels",openRenameLabels);
+  mk("dmPreviewBtn","Preview As…",openPreviewPicker);
+  mk("dmAccountsBtn","Accounts",openAccountManager);
   mk("dmStatsBtn","Statistics",openStats);
   mk("dmNotesBtn","Player Notes",openPlayerNotes);
   mk("dmExportBtn","Export Backup",doExport);
@@ -978,7 +1046,181 @@ function toggleReorder(){
   render();
 }
 
-// ---------- DM: EXPORT BACKUP ----------
+// ---------- RENAME LABELS ----------
+function openRenameLabels(){
+  const mb=document.getElementById("modalBg"), m=document.getElementById("modal");
+  const grps=[...new Set(STATE.npcs.map(n=>n.grp).filter(Boolean))].sort();
+  const subs=[...new Set(STATE.npcs.map(n=>n.subgroup).filter(Boolean))].sort();
+  const secs=[...new Set(STATE.npcs.map(n=>n.section).filter(Boolean))].sort();
+  const optRow=(label,field,vals)=>`<div class="ff full"><label>${label}</label><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
+    ${vals.map(v=>`<button class="mini-btn" onclick="promptRename('${field}','${v.replace(/'/g,"\\'")}')">✎ ${esc(v)}</button>`).join("")}
+  </div></div>`;
+  m.innerHTML=`<h3>Rename Labels</h3><div class="msub">Click any label to rename it everywhere it appears.</div>
+    <div class="fgrid">${optRow("Groups","grp",grps)}${optRow("Sections","section",secs)}${optRow("Subgroups","subgroup",subs)}</div>
+    <div class="modal-actions"><button class="mini-btn" onclick="document.getElementById('modalBg').classList.remove('open')">Close</button></div>`;
+  mb.classList.add("open");
+}
+async function promptRename(field, oldVal){
+  const newVal = prompt(`Rename "${oldVal}" to:`, oldVal);
+  if(!newVal || newVal===oldVal) return;
+  try{
+    await api("rename_label",{field, old_value:oldVal, new_value:newVal});
+    // update local state
+    STATE.npcs.forEach(n=>{ if(n[field]===oldVal) n[field]=newVal; });
+    toast(`Renamed "${oldVal}" → "${newVal}"`);
+    buildGroupFilter(); render();
+    document.getElementById("modalBg").classList.remove("open");
+  }catch(e){ toast("Error: "+e.message); }
+}
+
+// ---------- PREVIEW AS PLAYER ----------
+async function openPreviewPicker(){
+  const mb=document.getElementById("modalBg"), m=document.getElementById("modal");
+  m.innerHTML=`<h3>Preview As Player</h3><div class="msub">See the tracker exactly as a player sees it — their scores, their honor.</div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:8px" id="previewList"><div class="spinner" style="margin:20px auto"></div></div>
+    <div class="modal-actions"><button class="mini-btn" onclick="document.getElementById('modalBg').classList.remove('open')">Cancel</button></div>`;
+  mb.classList.add("open");
+  const pl = players.filter(p=>!p.is_dm);
+  document.getElementById("previewList").innerHTML = pl.map(p=>`<button class="mini-btn" style="text-align:left;padding:10px 14px" onclick="startPreview('${p.id}','${p.character_name.replace(/'/g,"\\'")}')">
+    ${esc(p.character_name)} <span style="color:var(--txt-faint);font-size:.8rem">⚔${p.honor_score??0} honor</span></button>`).join("");
+}
+async function startPreview(targetId, targetName){
+  document.getElementById("modalBg").classList.remove("open");
+  toast(`Previewing as ${targetName}…`);
+  try{
+    const r = await api("preview_as_player",{target_account_id:targetId});
+    previewMode = {name:r.previewing_as, honor_score:r.honor_score??0};
+    STATE.npcs=r.npcs||[]; STATE.scores=r.scores||{}; STATE.notes=r.notes||{};
+    STATE.honor_score=r.honor_score??0;
+    closeSide(); buildGroupFilter(); render();
+    updateWhoami(r.previewing_as);
+  }catch(e){ toast("Error: "+e.message); }
+}
+async function exitPreview(){
+  previewMode=null;
+  STATE.honor_score=0;
+  await refreshState();
+  updateWhoami(null);
+  toast("Exited preview");
+}
+
+// ---------- HONOR EXPLAIN (for players) ----------
+function showHonorExplain(){
+  const mb=document.getElementById("modalBg"), m=document.getElementById("modal");
+  const h=STATE.honor_score, bonus=Math.round(h/10);
+  m.innerHTML=`<h3>⚔ Your Honor Score</h3>
+    <div class="msub">How the Honor system works</div>
+    <div style="color:var(--parch);font-size:.97rem;line-height:1.7">
+      <p>Your current Honor score is <b style="color:var(--gold);font-size:1.2rem">${h}/100</b>.</p>
+      <p style="margin-top:12px">The <b>Honor Bonus</b> is calculated as: <code style="background:var(--ink);padding:2px 6px;border-radius:3px">round(${h} ÷ 10) = +${bonus}</code></p>
+      <p style="margin-top:8px">This bonus is <b>automatically added</b> to any NPC whose standing with you is between 0 and +10. It cannot push a standing above +10.</p>
+      <p style="margin-top:8px">NPCs who already dislike you (negative standing) or who are strongly trusted (+11 to +20) are not affected by your Honor.</p>
+      <p style="margin-top:8px">Honor is set by the DM and reflects your character's reputation and conduct in the world.</p>
+    </div>
+    <div class="modal-actions"><button class="mini-btn go" onclick="document.getElementById('modalBg').classList.remove('open')">Got it</button></div>`;
+  mb.classList.add("open");
+}
+
+// ---------- ACCOUNT MANAGER ----------
+async function openAccountManager(){
+  const mb=document.getElementById("modalBg"), m=document.getElementById("modal");
+  m.innerHTML=`<h3>Account Management</h3><div class="msub">Create, edit, or remove player accounts. Passwords shown in plain text for DM reference.</div>
+    <div id="acctList"><div class="spinner" style="margin:20px auto"></div></div>
+    <div class="modal-actions">
+      <button class="mini-btn go" onclick="openCreateAccount()">+ New Account</button>
+      <button class="mini-btn" onclick="document.getElementById('modalBg').classList.remove('open')">Close</button>
+    </div>`;
+  mb.classList.add("open");
+  await loadAccountList();
+}
+async function loadAccountList(){
+  const box=document.getElementById("acctList"); if(!box) return;
+  try{
+    const {accounts}=await api("list_accounts");
+    box.innerHTML=`<table class="acct-table">
+      <thead><tr><th>Name</th><th>Role</th><th>Honor</th><th>Actions</th></tr></thead>
+      <tbody>${accounts.map(a=>`<tr>
+        <td>${esc(a.character_name)}</td>
+        <td>${a.is_dm?'<span class="badge-dm" style="font-size:.6rem">DM</span>':'Player'}</td>
+        <td><span class="honor-chip" style="cursor:default">⚔ ${a.honor_score??0}</span></td>
+        <td style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="mini-btn" onclick="openEditAccount('${a.id}','${esc(a.character_name).replace(/'/g,"\\'")}',${a.is_dm},${a.honor_score??0})">Edit</button>
+          ${!a.is_dm?`<button class="mini-btn danger" onclick="deleteAccount('${a.id}','${esc(a.character_name).replace(/'/g,"\\'")}')">Delete</button>`:''}
+        </td></tr>`).join("")}
+      </tbody></table>`;
+  }catch(e){ box.innerHTML=`<div style="color:var(--blood-bright)">${esc(e.message)}</div>`; }
+}
+function openCreateAccount(){
+  const mb=document.getElementById("modalBg"), m=document.getElementById("modal");
+  m.innerHTML=`<h3>Create Account</h3>
+    <div class="fgrid">
+      <div class="ff full"><label>Character Name</label><input id="ca_name" placeholder="e.g. Grigory Snow"/></div>
+      <div class="ff full"><label>Password</label><input id="ca_pw" type="text" placeholder="Initial password"/></div>
+      <div class="ff"><label>Honor Score (0–100)</label><input id="ca_honor" type="number" min="0" max="100" value="0"/></div>
+      <div class="ff"><label>Role</label><select id="ca_dm"><option value="false">Player</option><option value="true">DM</option></select></div>
+    </div>
+    <div class="modal-actions">
+      <button class="mini-btn" onclick="openAccountManager()">Back</button>
+      <button class="mini-btn go" onclick="submitCreateAccount()">Create</button>
+    </div>`;
+}
+async function submitCreateAccount(){
+  const name=document.getElementById("ca_name").value.trim();
+  const pw=document.getElementById("ca_pw").value.trim();
+  const honor=parseInt(document.getElementById("ca_honor").value||"0");
+  const is_dm=document.getElementById("ca_dm").value==="true";
+  if(!name||!pw){toast("Name and password required");return;}
+  try{
+    await api("create_account",{character_name:name,password:pw,is_dm});
+    // set honor separately
+    const {accounts}=await api("list_accounts");
+    const newAcct=accounts.find(a=>a.character_name===name);
+    if(newAcct&&honor>0) await api("set_honor",{target_account_id:newAcct.id,honor_score:honor});
+    toast(`Account "${name}" created`);
+    players=(await api("list_players")).players.filter(p=>!p.is_dm);
+    await loadCharacters();
+    openAccountManager();
+  }catch(e){toast("Error: "+e.message);}
+}
+function openEditAccount(id,name,isDM,honor){
+  const mb=document.getElementById("modalBg"), m=document.getElementById("modal");
+  m.innerHTML=`<h3>Edit Account</h3><div class="msub">${esc(name)}</div>
+    <div class="fgrid">
+      <div class="ff full"><label>Character Name</label><input id="ea_name" value="${esc(name)}"/></div>
+      <div class="ff full"><label>New Password (leave blank to keep current)</label><input id="ea_pw" type="text" placeholder="New password…"/></div>
+      <div class="ff"><label>Honor Score (0–100)</label><input id="ea_honor" type="number" min="0" max="100" value="${honor}"/></div>
+      <div class="ff"><label>Role</label><select id="ea_dm"><option value="false"${!isDM?" selected":""}>Player</option><option value="true"${isDM?" selected":""}>DM</option></select></div>
+    </div>
+    <div class="modal-actions">
+      <button class="mini-btn" onclick="openAccountManager()">Back</button>
+      <button class="mini-btn go" onclick="submitEditAccount('${id}')">Save</button>
+    </div>`;
+}
+async function submitEditAccount(id){
+  const name=document.getElementById("ea_name").value.trim();
+  const pw=document.getElementById("ea_pw").value.trim();
+  const honor=parseInt(document.getElementById("ea_honor").value||"0");
+  const is_dm=document.getElementById("ea_dm").value==="true";
+  const payload={target_account_id:id,character_name:name,is_dm,honor_score:honor};
+  if(pw) payload.password=pw;
+  try{
+    await api("update_account",payload);
+    toast("Account updated");
+    players=(await api("list_players")).players.filter(p=>!p.is_dm);
+    await loadCharacters();
+    openAccountManager();
+  }catch(e){toast("Error: "+e.message);}
+}
+async function deleteAccount(id,name){
+  if(!confirm(`Delete account "${name}"? This removes all their scores and notes permanently.`))return;
+  try{
+    await api("delete_account",{target_account_id:id});
+    toast(`"${name}" deleted`);
+    players=(await api("list_players")).players.filter(p=>!p.is_dm);
+    await loadCharacters();
+    openAccountManager();
+  }catch(e){toast("Error: "+e.message);}
+}
 async function doExport(){
   toast("Preparing backup…");
   try{
@@ -995,7 +1237,7 @@ async function doExport(){
 }
 
 // ===================== DM: STATISTICS =====================
-let STATS=null, _charts=[], _statsPlayerFilter="";
+let STATS=null, _charts=[], _statsPlayerFilter="", _statsIncludeHonor=true;
 const CH = { gold:"#c9a24b", goldDim:"#8a7232", pos:"#6fcf91", posD:"#4f9d6b", neg:"#c8413f", negD:"#9e2b2b",
   parch:"#e8dcc0", dim:"#9d9482", faint:"#6f6a5e", grid:"rgba(120,110,90,.14)", ink:"#14121b" };
 const PALETTE=["#c9a24b","#6fcf91","#c8413f","#5b8fd6","#b072d6","#d68a4f","#4fc4c4","#d6c34f","#9e6bd6","#6bd6a0","#d66b9e","#8a8f4f"];
@@ -1025,20 +1267,25 @@ function buildStatsControls(){
         <option value="">All players (averaged)</option>
         ${players.map(p=>`<option value="${p.id}">${esc(p.character_name)}</option>`).join("")}
       </select></div>
-    <div class="stats-note">Standings range −20 (Nemesis) to +20 (Devoted). “All players” uses the average across everyone.</div>`;
+    <div class="ctl"><label style="font-size:.66rem;text-transform:uppercase;letter-spacing:.14em;color:var(--gold-dim);font-family:'Cinzel',serif">Honor</label>
+      <select id="statsHonorToggle">
+        <option value="1">Include Honor effects</option>
+        <option value="0">Raw scores only</option>
+      </select></div>
+    <div class="stats-note">Standings range −20 (Nemesis) to +20 (Devoted). "All players" uses the average across everyone.</div>`;
   document.getElementById("statsPlayer").onchange=(e)=>{ _statsPlayerFilter=e.target.value; renderStats(); };
+  document.getElementById("statsHonorToggle").onchange=(e)=>{ _statsIncludeHonor=e.target.value==="1"; renderStats(); };
 }
 
-// helper: effective score for an npc given the current perspective
-function scoresForNpc(npcId){
-  return STATS.scores.filter(s=>s.npc_id===npcId);
-}
+function statHonorBonus(accountId){ if(!_statsIncludeHonor) return 0; const a=STATS.accounts.find(x=>x.id===accountId); return a?Math.round((a.honor_score??0)/10):0; }
+function statEffective(baseVal, accountId){ const b=statHonorBonus(accountId); if(b===0||baseVal<0||baseVal>10)return baseVal; return Math.min(10,baseVal+b); }
+
 function npcEffectiveScore(npcId){
   const ss = _statsPlayerFilter
     ? STATS.scores.filter(s=>s.npc_id===npcId && s.account_id===_statsPlayerFilter)
     : STATS.scores.filter(s=>s.npc_id===npcId);
-  if(!ss.length) return null; // no explicit score → treat as unset
-  return ss.reduce((a,b)=>a+b.value,0)/ss.length;
+  if(!ss.length) return null;
+  return ss.reduce((a,b)=>a+statEffective(b.value,b.account_id),0)/ss.length;
 }
 
 function mkCard(grid, title, sub, wide, tall){
@@ -1047,14 +1294,27 @@ function mkCard(grid, title, sub, wide, tall){
   grid.appendChild(card);
   return card.querySelector("canvas");
 }
+function mkListCard(grid, title, sub, wide){
+  const card=document.createElement("div"); card.className="chart-card"+(wide?" wide":"");
+  card.innerHTML=`<h3>${title}</h3>${sub?`<div class="ctitle-sub">${sub}</div>`:""}<div class="stat-list" id="sl_${title.replace(/\W+/g,'_')}"></div>`;
+  grid.appendChild(card);
+  return card.querySelector(".stat-list");
+}
 function baseOpts(extra){
   return Object.assign({
     responsive:true, maintainAspectRatio:false,
-    plugins:{ legend:{ labels:{ color:CH.dim, font:{family:"EB Garamond", size:12} } } },
+    plugins:{legend:{ labels:{ color:CH.dim, font:{family:"EB Garamond", size:12} } }},
     scales:{ x:{ ticks:{color:CH.dim}, grid:{color:CH.grid} }, y:{ ticks:{color:CH.dim}, grid:{color:CH.grid} } }
   }, extra||{});
 }
 function newChart(ctx, cfg){ const c=new Chart(ctx, cfg); _charts.push(c); return c; }
+
+// NPC name tooltip on hover (for ???s showing their role)
+function npcLabel(n){ return n.name; }
+function npcTooltipTitle(n){ return n.name + (n.role?` — ${n.role}`:''); }
+function listRow(rank, label, value, color, sub){
+  return `<div class="slist-row"><span class="slist-rank">${rank}</span><span class="slist-name" title="${esc(sub||label)}">${esc(label)}</span><span class="slist-val" style="color:${color||'var(--parch)'}">${value}</span></div>`;
+}
 
 function renderStats(){
   _charts.forEach(c=>{ try{c.destroy();}catch(_){} }); _charts=[];
@@ -1067,175 +1327,180 @@ function renderStats(){
   const totalNpcs=npcs.length, deceased=npcs.filter(n=>n.deceased).length;
   const totalNotes=STATS.notes.filter(n=>n.body && n.body.trim()).length;
   const nonZero=STATS.scores.filter(s=>s.value!==0);
-  const avgAll = nonZero.length ? (nonZero.reduce((a,b)=>a+b.value,0)/nonZero.length) : 0;
+  const allEff=STATS.scores.map(s=>statEffective(s.value,s.account_id));
+  const avgAll = allEff.length ? allEff.reduce((a,b)=>a+b,0)/allEff.length : 0;
   const kpiWrap=document.createElement("div"); kpiWrap.className="stat-kpis"; kpiWrap.style.gridColumn="1/-1";
   kpiWrap.innerHTML=`
     <div class="kpi"><div class="num">${totalNpcs}</div><div class="lbl">NPCs Tracked</div><div class="sub">${deceased} deceased</div></div>
     <div class="kpi"><div class="num">${players.length}</div><div class="lbl">Players</div></div>
     <div class="kpi"><div class="num">${totalNotes}</div><div class="lbl">Player Notes</div></div>
     <div class="kpi"><div class="num">${nonZero.length}</div><div class="lbl">Non-Neutral Standings</div><div class="sub">of ${STATS.scores.length} set</div></div>
-    <div class="kpi"><div class="num" style="color:${avgAll>=0?CH.pos:CH.neg}">${avgAll>0?'+':''}${avgAll.toFixed(1)}</div><div class="lbl">Avg Standing</div><div class="sub">${repWordShort(Math.round(avgAll))}</div></div>`;
+    <div class="kpi"><div class="num" style="color:${avgAll>=0?CH.pos:CH.neg}">${avgAll>0?'+':''}${avgAll.toFixed(1)}</div><div class="lbl">Avg Effective Standing</div><div class="sub">${repWordShort(Math.round(avgAll))}</div></div>`;
   grid.appendChild(kpiWrap);
 
-  // ---- 1. Distribution histogram of effective standings ----
+  // 1. Distribution histogram
   (function(){
     const buckets={}; for(let v=-20;v<=20;v++) buckets[v]=0;
     npcs.forEach(n=>{ const v=npcEffectiveScore(n.id); if(v!==null) buckets[Math.round(v)]++; });
     const labels=Object.keys(buckets); const data=labels.map(k=>buckets[k]);
-    const ctx=mkCard(grid,"Standing Distribution","How standings spread across the −20…+20 scale", false, false);
+    const ctx=mkCard(grid,"Standing Distribution","How standings spread across the −20…+20 scale",false,false);
     newChart(ctx,{type:"bar",data:{labels,datasets:[{data,backgroundColor:labels.map(k=>+k>0?CH.posD:(+k<0?CH.negD:CH.faint)),borderRadius:2}]},
       options:baseOpts({plugins:{legend:{display:false}},scales:{x:{ticks:{color:CH.dim,maxTicksLimit:21},grid:{display:false}},y:{ticks:{color:CH.dim,precision:0},grid:{color:CH.grid}}}})});
   })();
 
-  // ---- 2. Sentiment split (pos / neutral / neg) doughnut ----
+  // 2. Sentiment doughnut
   (function(){
     let pos=0,neu=0,neg=0;
     npcs.forEach(n=>{ const v=npcEffectiveScore(n.id); if(v===null){neu++;return;} if(v>0)pos++; else if(v<0)neg++; else neu++; });
-    const ctx=mkCard(grid,"Overall Sentiment","Liked vs neutral/unset vs disliked NPCs", false, false);
+    const ctx=mkCard(grid,"Overall Sentiment","Liked vs neutral vs disliked NPCs",false,false);
     newChart(ctx,{type:"doughnut",data:{labels:["Positive","Neutral / Unset","Negative"],
       datasets:[{data:[pos,neu,neg],backgroundColor:[CH.posD,CH.faint,CH.negD],borderColor:CH.ink,borderWidth:2}]},
       options:baseOpts({scales:{},cutout:"58%"})});
   })();
 
-  // ---- 3. Average standing by group ----
+  // 3. Average standing by group
   (function(){
     const groups={};
     npcs.forEach(n=>{ const v=npcEffectiveScore(n.id); if(v===null)return; const g=n.grp||"—"; (groups[g]=groups[g]||[]).push(v); });
-    const labels=Object.keys(groups).sort(); const data=labels.map(g=>groups[g].reduce((a,b)=>a+b,0)/groups[g].length);
-    const ctx=mkCard(grid,"Average Standing by Group","Which factions are liked or disliked overall", false, false);
+    const labels=Object.keys(groups).sort(); const data=labels.map(g=>+(groups[g].reduce((a,b)=>a+b,0)/groups[g].length).toFixed(1));
+    const ctx=mkCard(grid,"Average Standing by Group","Which factions are liked or disliked overall",false,false);
     newChart(ctx,{type:"bar",data:{labels,datasets:[{data,backgroundColor:data.map(v=>v>=0?CH.posD:CH.negD),borderRadius:3}]},
       options:baseOpts({indexAxis:"y",plugins:{legend:{display:false}},scales:{x:{min:-20,max:20,ticks:{color:CH.dim},grid:{color:CH.grid}},y:{ticks:{color:CH.parch,font:{size:11}},grid:{display:false}}}})});
   })();
 
-  // ---- 4. Notes written per player ----
+  // 4. Notes per player — numbered leaderboard
   (function(){
     const byP={}; players.forEach(p=>byP[p.id]=0);
     STATS.notes.forEach(n=>{ if(n.body&&n.body.trim()&&byP[n.account_id]!==undefined) byP[n.account_id]++; });
-    const labels=players.map(p=>p.character_name); const data=players.map(p=>byP[p.id]);
-    const ctx=mkCard(grid,"Notes Written per Player","Player engagement — who's writing the most", false, false);
-    newChart(ctx,{type:"bar",data:{labels,datasets:[{data,backgroundColor:CH.gold,borderRadius:3}]},
-      options:baseOpts({plugins:{legend:{display:false}},scales:{x:{ticks:{color:CH.parch,font:{size:10}},grid:{display:false}},y:{ticks:{color:CH.dim,precision:0},grid:{color:CH.grid}}}})});
+    const sorted=players.map(p=>({name:p.character_name,count:byP[p.id]})).sort((a,b)=>b.count-a.count);
+    const box=mkListCard(grid,"Notes Written — Leaderboard","Who's writing the most",false);
+    box.innerHTML=sorted.map((p,i)=>listRow(i+1,p.name,p.count,i===0?CH.gold:CH.parch)).join("");
   })();
 
-  // ---- 5. Standings set per player (how many non-zero) ----
+  // 5. Relationships per player (positive vs negative count stacked)
   (function(){
     const byP={}; players.forEach(p=>byP[p.id]={pos:0,neg:0});
-    STATS.scores.forEach(s=>{ if(byP[s.account_id]===undefined)return; if(s.value>0)byP[s.account_id].pos++; else if(s.value<0)byP[s.account_id].neg++; });
+    STATS.scores.forEach(s=>{ if(byP[s.account_id]===undefined)return; const eff=statEffective(s.value,s.account_id); if(eff>0)byP[s.account_id].pos++; else if(eff<0)byP[s.account_id].neg++; });
     const labels=players.map(p=>p.character_name);
-    const ctx=mkCard(grid,"Relationships per Player","Positive vs negative standings each player holds", false, false);
+    const ctx=mkCard(grid,"Positive vs Negative Relationships","Count of liked vs disliked NPCs per player",false,false);
     newChart(ctx,{type:"bar",data:{labels,datasets:[
       {label:"Positive",data:players.map(p=>byP[p.id].pos),backgroundColor:CH.posD,borderRadius:2,stack:"s"},
       {label:"Negative",data:players.map(p=>byP[p.id].neg),backgroundColor:CH.negD,borderRadius:2,stack:"s"}]},
       options:baseOpts({scales:{x:{stacked:true,ticks:{color:CH.parch,font:{size:10}},grid:{display:false}},y:{stacked:true,ticks:{color:CH.dim,precision:0},grid:{color:CH.grid}}}})});
   })();
 
-  // ---- 6. Top 10 most liked NPCs ----
+  // 5b. Raw score sum per player (sentiment comparison)
   (function(){
-    const arr=npcs.map(n=>({n,v:npcEffectiveScore(n.id)})).filter(x=>x.v!==null && x.v>0).sort((a,b)=>b.v-a.v).slice(0,10);
-    const ctx=mkCard(grid,"Most Liked NPCs","Highest standings"+(_statsPlayerFilter?" for this player":" (averaged)"), false, false);
-    newChart(ctx,{type:"bar",data:{labels:arr.map(x=>x.n.name),datasets:[{data:arr.map(x=>+x.v.toFixed(1)),backgroundColor:CH.posD,borderRadius:3}]},
-      options:baseOpts({indexAxis:"y",plugins:{legend:{display:false}},scales:{x:{min:0,max:20,ticks:{color:CH.dim},grid:{color:CH.grid}},y:{ticks:{color:CH.parch,font:{size:11}},grid:{display:false}}}})});
+    const data=players.map(p=>{
+      const ss=STATS.scores.filter(s=>s.account_id===p.id);
+      return ss.reduce((a,b)=>a+statEffective(b.value,b.account_id),0);
+    });
+    const ctx=mkCard(grid,"Total Sentiment Score — by Player","Sum of all effective standings each player holds",false,false);
+    newChart(ctx,{type:"bar",data:{labels:players.map(p=>p.character_name),datasets:[{data,backgroundColor:data.map(v=>v>=0?CH.posD:CH.negD),borderRadius:3}]},
+      options:baseOpts({plugins:{legend:{display:false}},scales:{x:{ticks:{color:CH.parch,font:{size:10}},grid:{display:false}},y:{ticks:{color:CH.dim},grid:{color:CH.grid}}}})});
   })();
 
-  // ---- 7. Top 10 most disliked NPCs ----
+  // 6. Top 10 most liked
   (function(){
-    const arr=npcs.map(n=>({n,v:npcEffectiveScore(n.id)})).filter(x=>x.v!==null && x.v<0).sort((a,b)=>a.v-b.v).slice(0,10);
-    const ctx=mkCard(grid,"Most Disliked NPCs","Lowest standings"+(_statsPlayerFilter?" for this player":" (averaged)"), false, false);
-    newChart(ctx,{type:"bar",data:{labels:arr.map(x=>x.n.name),datasets:[{data:arr.map(x=>+x.v.toFixed(1)),backgroundColor:CH.negD,borderRadius:3}]},
-      options:baseOpts({indexAxis:"y",plugins:{legend:{display:false}},scales:{x:{min:-20,max:0,ticks:{color:CH.dim},grid:{color:CH.grid}},y:{ticks:{color:CH.parch,font:{size:11}},grid:{display:false}}}})});
+    const arr=npcs.map(n=>({n,v:npcEffectiveScore(n.id)})).filter(x=>x.v!==null&&x.v>0).sort((a,b)=>b.v-a.v).slice(0,10);
+    const box=mkListCard(grid,"Most Liked NPCs","Highest standings"+(_statsPlayerFilter?" for this player":" averaged"),false);
+    box.innerHTML=arr.map((x,i)=>listRow(i+1,x.n.name,`+${x.v.toFixed(1)}`,CH.pos,x.n.name+(x.n.role?` — ${x.n.role}`:''))).join("");
   })();
 
-  // ---- 8. Most-noted NPCs (engagement) ----
+  // 7. Top 10 most disliked
   (function(){
-    const cnt={};
-    STATS.notes.forEach(n=>{ if(n.body&&n.body.trim()) cnt[n.npc_id]=(cnt[n.npc_id]||0)+1; });
-    const arr=Object.entries(cnt).map(([id,c])=>({name:(npcById[id]?.name||"?"),c})).sort((a,b)=>b.c-a.c).slice(0,10);
-    const ctx=mkCard(grid,"Most-Noted NPCs","Which NPCs players write about most", false, false);
-    newChart(ctx,{type:"bar",data:{labels:arr.map(x=>x.name),datasets:[{data:arr.map(x=>x.c),backgroundColor:CH.gold,borderRadius:3}]},
-      options:baseOpts({indexAxis:"y",plugins:{legend:{display:false}},scales:{x:{ticks:{color:CH.dim,precision:0},grid:{color:CH.grid}},y:{ticks:{color:CH.parch,font:{size:11}},grid:{display:false}}}})});
+    const arr=npcs.map(n=>({n,v:npcEffectiveScore(n.id)})).filter(x=>x.v!==null&&x.v<0).sort((a,b)=>a.v-b.v).slice(0,10);
+    const box=mkListCard(grid,"Most Disliked NPCs","Lowest standings"+(_statsPlayerFilter?" for this player":" averaged"),false);
+    box.innerHTML=arr.map((x,i)=>listRow(i+1,x.n.name,x.v.toFixed(1),CH.neg,x.n.name+(x.n.role?` — ${x.n.role}`:''))).join("");
   })();
 
-  // ---- 9. Most polarizing NPCs (variance across players) ----
+  // 8. Most polarizing NPCs
   (function(){
     const arr=npcs.map(n=>{
-      const ss=STATS.scores.filter(s=>s.npc_id===n.id).map(s=>s.value);
-      if(ss.length<2) return null;
-      const m=ss.reduce((a,b)=>a+b,0)/ss.length;
+      const ss=STATS.scores.filter(s=>s.npc_id===n.id).map(s=>statEffective(s.value,s.account_id));
+      if(ss.length<2)return null;
       const range=Math.max(...ss)-Math.min(...ss);
-      return {name:n.name, range, spread:Math.sqrt(ss.reduce((a,b)=>a+(b-m)*(b-m),0)/ss.length)};
+      return {name:n.name,role:n.role,range};
     }).filter(Boolean).sort((a,b)=>b.range-a.range).slice(0,10);
-    const ctx=mkCard(grid,"Most Polarizing NPCs","Biggest split between players' opinions (range)", false, false);
-    newChart(ctx,{type:"bar",data:{labels:arr.map(x=>x.name),datasets:[{data:arr.map(x=>x.range),backgroundColor:"#b072d6",borderRadius:3}]},
-      options:baseOpts({indexAxis:"y",plugins:{legend:{display:false}},scales:{x:{ticks:{color:CH.dim,precision:0},grid:{color:CH.grid}},y:{ticks:{color:CH.parch,font:{size:11}},grid:{display:false}}}})});
+    const box=mkListCard(grid,"Most Polarizing NPCs","Biggest opinion split between players",false);
+    box.innerHTML=arr.map((x,i)=>listRow(i+1,x.name,`±${(x.range/2).toFixed(1)}`,"#b072d6",x.name+(x.role?` — ${x.role}`:''))).join("");
   })();
 
-  // ---- 10. Signet popularity ----
+  // 9. Basgiath squad roster sizes (excluding Leadership)
   (function(){
-    const cnt={};
-    npcs.forEach(n=>{ if(n.signet){ const s=n.signet.trim(); cnt[s]=(cnt[s]||0)+1; } });
-    const arr=Object.entries(cnt).sort((a,b)=>b[1]-a[1]).slice(0,12);
-    const ctx=mkCard(grid,"Signet Popularity","Most common signets among NPCs (top 12)", false, false);
-    newChart(ctx,{type:"bar",data:{labels:arr.map(x=>x[0]),datasets:[{data:arr.map(x=>x[1]),backgroundColor:"#5b8fd6",borderRadius:3}]},
-      options:baseOpts({indexAxis:"y",plugins:{legend:{display:false}},scales:{x:{ticks:{color:CH.dim,precision:0},grid:{color:CH.grid}},y:{ticks:{color:CH.parch,font:{size:10}},grid:{display:false}}}})});
+    const squads={};
+    npcs.filter(n=>n.grp==="Basgiath War College"&&n.section&&!/leadership/i.test(n.section)&&n.squad).forEach(n=>{
+      const key=`${ordinal(n.wing)} Wing — ${n.section} — ${n.squad} Squad`;
+      squads[key]=(squads[key]||0)+1;
+    });
+    const sorted=Object.entries(squads).sort((a,b)=>b[1]-a[1]);
+    const box=mkListCard(grid,"Basgiath Roster — By Squad","Cadet count per squad (leadership excluded)",true);
+    box.innerHTML=`<div style="columns:2;gap:16px">${sorted.map(([k,v],i)=>listRow(i+1,k,v,CH.parch)).join("")}</div>`;
   })();
 
-  // ---- 11. NPC count by group ----
+  // 10. Cadet year distribution by group
   (function(){
-    const cnt={}; npcs.forEach(n=>{ const g=n.grp||"—"; cnt[g]=(cnt[g]||0)+1; });
-    const labels=Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a]);
-    const ctx=mkCard(grid,"Roster Size by Group","How many NPCs in each faction", false, false);
-    newChart(ctx,{type:"doughnut",data:{labels,datasets:[{data:labels.map(g=>cnt[g]),backgroundColor:labels.map((_,i)=>PALETTE[i%PALETTE.length]),borderColor:CH.ink,borderWidth:2}]},
-      options:baseOpts({scales:{},plugins:{legend:{position:"right",labels:{color:CH.dim,font:{size:11},boxWidth:12}}}})});
-  })();
-
-  // ---- 12. Alive vs deceased by group (stacked) ----
-  (function(){
-    const g={}; npcs.forEach(n=>{ const k=n.grp||"—"; g[k]=g[k]||{a:0,d:0}; n.deceased?g[k].d++:g[k].a++; });
-    const labels=Object.keys(g).sort();
-    const ctx=mkCard(grid,"Alive vs Deceased by Group","Casualties across factions", false, false);
-    newChart(ctx,{type:"bar",data:{labels,datasets:[
-      {label:"Active",data:labels.map(k=>g[k].a),backgroundColor:CH.posD,borderRadius:2,stack:"s"},
-      {label:"Deceased",data:labels.map(k=>g[k].d),backgroundColor:CH.negD,borderRadius:2,stack:"s"}]},
+    const groups=[...new Set(npcs.filter(n=>n.year).map(n=>n.grp).filter(Boolean))];
+    const years=[...new Set(npcs.map(n=>n.year).filter(Boolean))].sort();
+    const ds=years.map((y,i)=>({
+      label:"Year "+y,
+      data:groups.map(g=>npcs.filter(n=>n.grp===g&&n.year===y).length),
+      backgroundColor:PALETTE[i%PALETTE.length], borderRadius:2, stack:"s"
+    }));
+    const ctx=mkCard(grid,"Cadet Year Distribution by Group","Year breakdown across factions",true,false);
+    newChart(ctx,{type:"bar",data:{labels:groups,datasets:ds},
       options:baseOpts({scales:{x:{stacked:true,ticks:{color:CH.parch,font:{size:10}},grid:{display:false}},y:{stacked:true,ticks:{color:CH.dim,precision:0},grid:{color:CH.grid}}}})});
   })();
 
-  // ---- 13. Cadet year distribution ----
-  (function(){
-    const cnt={}; npcs.forEach(n=>{ if(n.year){ cnt[n.year]=(cnt[n.year]||0)+1; } });
-    const labels=Object.keys(cnt).sort();
-    if(!labels.length) return;
-    const ctx=mkCard(grid,"Cadet Year Distribution","Cadets by year of study", false, false);
-    newChart(ctx,{type:"bar",data:{labels:labels.map(y=>"Year "+y),datasets:[{data:labels.map(y=>cnt[y]),backgroundColor:CH.goldDim,borderRadius:3}]},
-      options:baseOpts({plugins:{legend:{display:false}},scales:{x:{ticks:{color:CH.parch},grid:{display:false}},y:{ticks:{color:CH.dim,precision:0},grid:{color:CH.grid}}}})});
-  })();
-
-  // ---- 14. Per-player average standing by group (radar) ----
+  // 11. Player sentiment radar (per group avg)
   (function(){
     const groups=[...new Set(npcs.map(n=>n.grp).filter(Boolean))].sort();
-    if(groups.length<3) return;
+    if(groups.length<3)return;
     const ds=players.map((p,i)=>{
       const data=groups.map(g=>{
-        const vals=npcs.filter(n=>n.grp===g).map(n=>{ const s=STATS.scores.find(x=>x.npc_id===n.id&&x.account_id===p.id); return s?s.value:null; }).filter(v=>v!==null);
+        const vals=npcs.filter(n=>n.grp===g).map(n=>{ const s=STATS.scores.find(x=>x.npc_id===n.id&&x.account_id===p.id); return s?statEffective(s.value,p.id):null; }).filter(v=>v!==null);
         return vals.length? +(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1) : 0;
       });
       const col=PALETTE[i%PALETTE.length];
       return {label:p.character_name,data,borderColor:col,backgroundColor:col+"22",pointBackgroundColor:col,borderWidth:2};
     });
-    const ctx=mkCard(grid,"Player Sentiment by Group","Each player's average standing per faction", true, true);
+    const ctx=mkCard(grid,"Player Sentiment by Group","Each player's average standing per faction",true,true);
     newChart(ctx,{type:"radar",data:{labels:groups,datasets:ds},
       options:baseOpts({scales:{r:{min:-20,max:20,angleLines:{color:CH.grid},grid:{color:CH.grid},pointLabels:{color:CH.parch,font:{size:11}},ticks:{color:CH.faint,backdropColor:"transparent",stepSize:10}}}})});
   })();
 
-  // ---- 15. Player agreement matrix (avg standing each player holds) ----
+  // 12. Rate individual NPCs — top/bottom by average
   (function(){
-    const ctx=mkCard(grid,"Average Standing Held — by Player","Whose overall outlook is warmest vs coldest", false, false);
+    const rated=npcs.map(n=>({n,v:npcEffectiveScore(n.id)})).filter(x=>x.v!==null).sort((a,b)=>b.v-a.v);
+    const ctx=mkCard(grid,"Full NPC Rating","All NPCs with explicit standings, best to worst",true,true);
+    const top=rated.slice(0,20);
+    newChart(ctx,{type:"bar",data:{
+      labels:top.map(x=>x.n.name),
+      datasets:[{data:top.map(x=>+x.v.toFixed(1)),backgroundColor:top.map(x=>x.v>=0?CH.posD:CH.negD),borderRadius:3}]
+    },options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{title:items=>{const n=top[items[0].dataIndex].n; return n.name+(n.role?' — '+n.role:'');}}}},
+      scales:{x:{ticks:{color:CH.parch,font:{size:9},maxRotation:45},grid:{display:false}},y:{min:-20,max:20,ticks:{color:CH.dim},grid:{color:CH.grid}}}
+    }});
+  })();
+
+  // 13. Average standing held per player
+  (function(){
     const data=players.map(p=>{
-      const ss=STATS.scores.filter(s=>s.account_id===p.id && s.value!==0);
-      return ss.length? +(ss.reduce((a,b)=>a+b.value,0)/ss.length).toFixed(1) : 0;
+      const ss=STATS.scores.filter(s=>s.account_id===p.id&&s.value!==0);
+      return ss.length? +(ss.reduce((a,b)=>a+statEffective(b.value,b.account_id),0)/ss.length).toFixed(1) : 0;
     });
+    const ctx=mkCard(grid,"Average Standing Held — by Player","Whose overall outlook is warmest vs coldest",false,false);
     newChart(ctx,{type:"bar",data:{labels:players.map(p=>p.character_name),datasets:[{data,backgroundColor:data.map(v=>v>=0?CH.posD:CH.negD),borderRadius:3}]},
       options:baseOpts({plugins:{legend:{display:false}},scales:{x:{ticks:{color:CH.parch,font:{size:10}},grid:{display:false}},y:{min:-20,max:20,ticks:{color:CH.dim},grid:{color:CH.grid}}}})});
   })();
+
+  // inject stat-list styles if needed
+  if(!document.getElementById("slist-style")){
+    const s=document.createElement("style"); s.id="slist-style";
+    s.textContent=`.stat-list{padding:4px 0}.slist-row{display:flex;align-items:baseline;gap:8px;padding:6px 0;border-bottom:1px dotted rgba(120,110,90,.2)}.slist-rank{font-family:'Cinzel',serif;font-size:.7rem;color:var(--gold-dim);min-width:22px}.slist-name{flex:1;color:var(--parch);font-size:.92rem;cursor:default;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.slist-val{font-family:'Cinzel',serif;font-weight:600;font-size:.95rem}`;
+    document.head.appendChild(s);
+  }
 }
 
 // ---------- DM: PLAYER NOTES VIEWER ----------
