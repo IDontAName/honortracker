@@ -208,11 +208,16 @@
   /* ---------- DM CONTROLS in sidebar ---------- */
   .dm-box{margin-top:16px; padding:14px; border:1px solid var(--blood); border-radius:var(--rad); background:rgba(158,43,43,.06)}
   .dm-box h4{font-family:'Cinzel',serif; font-size:.7rem; text-transform:uppercase; letter-spacing:.16em; color:var(--blood-bright); margin-bottom:12px}
-  .pl-row{display:flex; align-items:center; gap:8px; margin-bottom:9px}
-  .pl-row .pn{flex:1; font-size:.9rem; color:var(--parch)}
-  .pl-row input[type=range]{flex:1.4; accent-color:var(--gold)}
-  .pl-row .pv{width:30px; text-align:center; font-family:'Cinzel',serif; font-weight:600; font-size:.9rem}
-  .dm-allrow{display:flex; gap:8px; margin-top:6px; align-items:center}
+  .pl-grid{display:grid; grid-template-columns:1fr auto; gap:6px 10px; margin-bottom:4px}
+  .pl-name{font-size:.88rem; color:var(--parch); padding-top:2px; line-height:1.2}
+  .pl-honor-sub{font-size:.68rem; color:var(--gold-dim); font-style:italic; grid-column:1}
+  .pl-ctrl{display:flex; align-items:center; gap:0; grid-row:span 1}
+  .pl-step{width:26px; height:30px; background:var(--ink); border:1px solid var(--edge2); color:var(--txt-dim); font-size:1rem; line-height:1; cursor:pointer; transition:.12s; flex:0 0 auto}
+  .pl-step:first-child{border-radius:4px 0 0 4px}
+  .pl-step:last-child{border-radius:0 4px 4px 0}
+  .pl-step:hover{background:var(--gold); color:#1a1510; border-color:var(--gold)}
+  .pl-val{width:40px; height:30px; text-align:center; background:var(--ink2); border-top:1px solid var(--edge2); border-bottom:1px solid var(--edge2); font-family:'Cinzel',serif; font-weight:600; font-size:.9rem; color:var(--parch); display:flex; align-items:center; justify-content:center; cursor:default; user-select:none}
+  .dm-allrow{display:flex; gap:8px; margin-top:10px; align-items:center}
   .dm-allrow input{width:70px; padding:6px 8px; background:var(--ink); border:1px solid var(--edge); border-radius:var(--rad); color:var(--txt)}
   .mini-btn{font-size:.66rem; text-transform:uppercase; letter-spacing:.1em; font-family:'Cinzel',serif; padding:7px 11px;
     border:1px solid var(--edge); border-radius:var(--rad); color:var(--txt-dim); transition:.15s}
@@ -820,39 +825,77 @@ async function loadDMPlayers(n){
   try{
     const { players:pl, scores } = await api("dm_scores_for_npc",{npc_id:n.id});
     const box = document.getElementById("dmPlayers"); if(!box) return;
+
+    // Build grid: name | stepper, optional honor subnote below name
     box.innerHTML = pl.map(p=>{
       const baseVal = scores[p.id] ?? 0;
       const honor = p.honor_score ?? 0;
-      const honorBonus = Math.round(honor/10);
-      const effective = (baseVal >= 0 && baseVal <= 10 && honorBonus > 0) ? Math.min(10, baseVal + honorBonus) : baseVal;
+      const hb = Math.round(honor/10);
+      const effective = (baseVal >= 0 && baseVal <= 10 && hb > 0) ? Math.min(10, baseVal + hb) : baseVal;
       const showBonus = effective !== baseVal;
-      return `<div class="pl-row" data-aid="${p.id}" data-honor="${honor}">
-        <span class="pn">${esc(p.character_name)}</span>
-        <input type="range" min="-20" max="20" value="${baseVal}" />
-        <span class="pv" style="color:${repColor(baseVal)}">${baseVal>0?'+':''}${baseVal}</span>
-        ${showBonus?`<span class="honor-sub" title="With ⚔${honor} honor: effectively ${effective>0?'+':''}${effective}">⚔+${honorBonus}→${effective>0?'+':''}${effective}</span>`:''}
+      const valColor = repColor(baseVal);
+      return `<div class="pl-grid" data-aid="${p.id}" data-honor="${honor}" data-npcid="${n.id}">
+        <div class="pl-name">${esc(p.character_name)}</div>
+        <div class="pl-ctrl" style="grid-row:1${showBonus?'/3':''}">
+          <button class="pl-step" data-delta="-1">−</button>
+          <div class="pl-val" style="color:${valColor}">${baseVal>0?'+':''}${baseVal}</div>
+          <button class="pl-step" data-delta="1">+</button>
+        </div>
+        ${showBonus?`<div class="pl-honor-sub">⚔ +${hb} honor → effective ${effective>0?'+':''}${effective}</div>`:''}
       </div>`;
     }).join("");
-    box.querySelectorAll(".pl-row").forEach(row=>{
-      const rng=row.querySelector("input"), pv=row.querySelector(".pv"), aid=row.dataset.aid;
-      const honor=parseInt(row.dataset.honor||"0");
-      const hb=Math.round(honor/10);
-      let t=null;
-      rng.addEventListener("input",()=>{
-        const v=+rng.value; pv.textContent=(v>0?'+':'')+v; pv.style.color=repColor(v);
-        // update the honor sub note
-        const sub=row.querySelector(".honor-sub");
-        if(sub){
-          if(v>=0 && v<=10 && hb>0){ const eff=Math.min(10,v+hb); sub.textContent=`⚔+${hb}→${eff>0?'+':''}${eff}`; sub.style.display=''; }
-          else { sub.style.display='none'; }
-        }
-        clearTimeout(t); t=setTimeout(async()=>{
-          try{ await api("set_score",{target_account_id:aid, npc_id:n.id, value:v});
-            if(aid===MY_ACCOUNT_ID){ STATE.scores[n.id]=v; } }catch(e){ toast("save failed"); }
-        },400);
+
+    box.querySelectorAll(".pl-grid").forEach(grid=>{
+      const aid=grid.dataset.aid, npcId=grid.dataset.npcid;
+      const honor=parseInt(grid.dataset.honor||"0"), hb=Math.round(honor/10);
+      const valEl=grid.querySelector(".pl-val");
+      let cur=parseInt(valEl.textContent)||0, t=null;
+
+      const updateDisplay=(v)=>{
+        valEl.textContent=(v>0?'+':'')+v; valEl.style.color=repColor(v);
+        // update honor subnote
+        let sub=grid.querySelector(".pl-honor-sub");
+        if(v>=0 && v<=10 && hb>0){
+          const eff=Math.min(10,v+hb);
+          if(!sub){ sub=document.createElement("div"); sub.className="pl-honor-sub"; grid.appendChild(sub); }
+          sub.textContent=`⚔ +${hb} honor → effective ${eff>0?'+':''}${eff}`;
+        } else if(sub){ sub.remove(); }
+      };
+
+      grid.querySelectorAll(".pl-step").forEach(btn=>{
+        btn.addEventListener("click",()=>{
+          const delta=parseInt(btn.dataset.delta);
+          cur=Math.max(-20,Math.min(20,cur+delta));
+          updateDisplay(cur);
+          clearTimeout(t); t=setTimeout(async()=>{
+            try{ await api("set_score",{target_account_id:aid, npc_id:npcId, value:cur}); }
+            catch(e){ toast("save failed"); }
+          },300);
+        });
+      });
+
+      // also allow clicking the value display to type directly
+      valEl.addEventListener("click",()=>{
+        const inp=document.createElement("input");
+        inp.type="number"; inp.min=-20; inp.max=20; inp.value=cur;
+        inp.style.cssText="width:40px;height:30px;text-align:center;background:var(--ink2);border:1px solid var(--gold-dim);border-radius:2px;color:var(--parch);font-family:'Cinzel',serif;font-size:.9rem";
+        valEl.replaceWith(inp); inp.focus(); inp.select();
+        const commit=()=>{
+          cur=Math.max(-20,Math.min(20,parseInt(inp.value)||0));
+          inp.replaceWith(valEl); updateDisplay(cur);
+          clearTimeout(t); t=setTimeout(async()=>{
+            try{ await api("set_score",{target_account_id:aid, npc_id:npcId, value:cur}); }
+            catch(e){ toast("save failed"); }
+          },100);
+        };
+        inp.addEventListener("blur",commit);
+        inp.addEventListener("keydown",e=>{ if(e.key==="Enter")commit(); });
       });
     });
-  }catch(e){ const box=document.getElementById("dmPlayers"); if(box) box.innerHTML=`<div style="color:var(--blood-bright);font-size:.85rem">${esc(e.message)}</div>`; }
+  }catch(e){
+    const box=document.getElementById("dmPlayers");
+    if(box) box.innerHTML=`<div style="color:var(--blood-bright);font-size:.85rem">${esc(e.message)}</div>`;
+  }
 }
 
 let MY_ACCOUNT_ID = null; // not strictly needed; refreshSilently re-pulls own scores
@@ -1335,7 +1378,7 @@ function renderStats(){
     <div class="kpi"><div class="num">${players.length}</div><div class="lbl">Players</div></div>
     <div class="kpi"><div class="num">${totalNotes}</div><div class="lbl">Player Notes</div></div>
     <div class="kpi"><div class="num">${nonZero.length}</div><div class="lbl">Non-Neutral Standings</div><div class="sub">of ${STATS.scores.length} set</div></div>
-    <div class="kpi"><div class="num" style="color:${avgAll>=0?CH.pos:CH.neg}">${avgAll>0?'+':''}${avgAll.toFixed(1)}</div><div class="lbl">Avg Effective Standing</div><div class="sub">${repWordShort(Math.round(avgAll))}</div></div>`;
+    <div class="kpi"><div class="num" style="color:${avgAll>=0?CH.pos:CH.neg}">${avgAll>0?'+':''}${avgAll.toFixed(1)}</div><div class="lbl">Avg NPC Regard Toward Party</div><div class="sub">${repWordShort(Math.round(avgAll))}</div></div>`;
   grid.appendChild(kpiWrap);
 
   // 1. Distribution histogram
@@ -1343,7 +1386,7 @@ function renderStats(){
     const buckets={}; for(let v=-20;v<=20;v++) buckets[v]=0;
     npcs.forEach(n=>{ const v=npcEffectiveScore(n.id); if(v!==null) buckets[Math.round(v)]++; });
     const labels=Object.keys(buckets); const data=labels.map(k=>buckets[k]);
-    const ctx=mkCard(grid,"Standing Distribution","How standings spread across the −20…+20 scale",false,false);
+    const ctx=mkCard(grid,"Standing Distribution","How this NPC's reputation spreads across players (−20…+20)",false,false);
     newChart(ctx,{type:"bar",data:{labels,datasets:[{data,backgroundColor:labels.map(k=>+k>0?CH.posD:(+k<0?CH.negD:CH.faint)),borderRadius:2}]},
       options:baseOpts({plugins:{legend:{display:false}},scales:{x:{ticks:{color:CH.dim,maxTicksLimit:21},grid:{display:false}},y:{ticks:{color:CH.dim,precision:0},grid:{color:CH.grid}}}})});
   })();
@@ -1352,7 +1395,7 @@ function renderStats(){
   (function(){
     let pos=0,neu=0,neg=0;
     npcs.forEach(n=>{ const v=npcEffectiveScore(n.id); if(v===null){neu++;return;} if(v>0)pos++; else if(v<0)neg++; else neu++; });
-    const ctx=mkCard(grid,"Overall Sentiment","Liked vs neutral vs disliked NPCs",false,false);
+    const ctx=mkCard(grid,"Overall Sentiment","How many NPCs view players positively, neutrally, or negatively",false,false);
     newChart(ctx,{type:"doughnut",data:{labels:["Positive","Neutral / Unset","Negative"],
       datasets:[{data:[pos,neu,neg],backgroundColor:[CH.posD,CH.faint,CH.negD],borderColor:CH.ink,borderWidth:2}]},
       options:baseOpts({scales:{},cutout:"58%"})});
@@ -1363,7 +1406,7 @@ function renderStats(){
     const groups={};
     npcs.forEach(n=>{ const v=npcEffectiveScore(n.id); if(v===null)return; const g=n.grp||"—"; (groups[g]=groups[g]||[]).push(v); });
     const labels=Object.keys(groups).sort(); const data=labels.map(g=>+(groups[g].reduce((a,b)=>a+b,0)/groups[g].length).toFixed(1));
-    const ctx=mkCard(grid,"Average Standing by Group","Which factions are liked or disliked overall",false,false);
+    const ctx=mkCard(grid,"Avg NPC Regard by Faction","Which factions hold the highest or lowest regard for the party",false,false);
     newChart(ctx,{type:"bar",data:{labels,datasets:[{data,backgroundColor:data.map(v=>v>=0?CH.posD:CH.negD),borderRadius:3}]},
       options:baseOpts({indexAxis:"y",plugins:{legend:{display:false}},scales:{x:{min:-20,max:20,ticks:{color:CH.dim},grid:{color:CH.grid}},y:{ticks:{color:CH.parch,font:{size:11}},grid:{display:false}}}})});
   })();
@@ -1373,7 +1416,7 @@ function renderStats(){
     const byP={}; players.forEach(p=>byP[p.id]=0);
     STATS.notes.forEach(n=>{ if(n.body&&n.body.trim()&&byP[n.account_id]!==undefined) byP[n.account_id]++; });
     const sorted=players.map(p=>({name:p.character_name,count:byP[p.id]})).sort((a,b)=>b.count-a.count);
-    const box=mkListCard(grid,"Notes Written — Leaderboard","Who's writing the most",false);
+    const box=mkListCard(grid,"Notes Written — Leaderboard","Who writes the most about NPCs",false);
     box.innerHTML=sorted.map((p,i)=>listRow(i+1,p.name,p.count,i===0?CH.gold:CH.parch)).join("");
   })();
 
@@ -1382,7 +1425,7 @@ function renderStats(){
     const byP={}; players.forEach(p=>byP[p.id]={pos:0,neg:0});
     STATS.scores.forEach(s=>{ if(byP[s.account_id]===undefined)return; const eff=statEffective(s.value,s.account_id); if(eff>0)byP[s.account_id].pos++; else if(eff<0)byP[s.account_id].neg++; });
     const labels=players.map(p=>p.character_name);
-    const ctx=mkCard(grid,"Positive vs Negative Relationships","Count of liked vs disliked NPCs per player",false,false);
+    const ctx=mkCard(grid,"NPCs Viewing Each Player Favourably vs Unfavourably","How many NPCs like vs dislike each player",false,false);
     newChart(ctx,{type:"bar",data:{labels,datasets:[
       {label:"Positive",data:players.map(p=>byP[p.id].pos),backgroundColor:CH.posD,borderRadius:2,stack:"s"},
       {label:"Negative",data:players.map(p=>byP[p.id].neg),backgroundColor:CH.negD,borderRadius:2,stack:"s"}]},
@@ -1395,7 +1438,7 @@ function renderStats(){
       const ss=STATS.scores.filter(s=>s.account_id===p.id);
       return ss.reduce((a,b)=>a+statEffective(b.value,b.account_id),0);
     });
-    const ctx=mkCard(grid,"Total Sentiment Score — by Player","Sum of all effective standings each player holds",false,false);
+    const ctx=mkCard(grid,"Total NPC Regard — by Player","Sum of all NPC standings toward each player (raw comparison)",false,false);
     newChart(ctx,{type:"bar",data:{labels:players.map(p=>p.character_name),datasets:[{data,backgroundColor:data.map(v=>v>=0?CH.posD:CH.negD),borderRadius:3}]},
       options:baseOpts({plugins:{legend:{display:false}},scales:{x:{ticks:{color:CH.parch,font:{size:10}},grid:{display:false}},y:{ticks:{color:CH.dim},grid:{color:CH.grid}}}})});
   })();
@@ -1403,14 +1446,14 @@ function renderStats(){
   // 6. Top 10 most liked
   (function(){
     const arr=npcs.map(n=>({n,v:npcEffectiveScore(n.id)})).filter(x=>x.v!==null&&x.v>0).sort((a,b)=>b.v-a.v).slice(0,10);
-    const box=mkListCard(grid,"Most Liked NPCs","Highest standings"+(_statsPlayerFilter?" for this player":" averaged"),false);
+    const box=mkListCard(grid,"NPCs Who Most Like the Party","Highest average regard for the player(s)"+(_statsPlayerFilter?" for this player":" averaged"),false);
     box.innerHTML=arr.map((x,i)=>listRow(i+1,x.n.name,`+${x.v.toFixed(1)}`,CH.pos,x.n.name+(x.n.role?` — ${x.n.role}`:''))).join("");
   })();
 
   // 7. Top 10 most disliked
   (function(){
     const arr=npcs.map(n=>({n,v:npcEffectiveScore(n.id)})).filter(x=>x.v!==null&&x.v<0).sort((a,b)=>a.v-b.v).slice(0,10);
-    const box=mkListCard(grid,"Most Disliked NPCs","Lowest standings"+(_statsPlayerFilter?" for this player":" averaged"),false);
+    const box=mkListCard(grid,"NPCs Who Most Dislike the Party","Lowest average regard for the player(s)"+(_statsPlayerFilter?" for this player":" averaged"),false);
     box.innerHTML=arr.map((x,i)=>listRow(i+1,x.n.name,x.v.toFixed(1),CH.neg,x.n.name+(x.n.role?` — ${x.n.role}`:''))).join("");
   })();
 
@@ -1422,7 +1465,7 @@ function renderStats(){
       const range=Math.max(...ss)-Math.min(...ss);
       return {name:n.name,role:n.role,range};
     }).filter(Boolean).sort((a,b)=>b.range-a.range).slice(0,10);
-    const box=mkListCard(grid,"Most Polarizing NPCs","Biggest opinion split between players",false);
+    const box=mkListCard(grid,"Most Polarizing NPCs","NPCs whose opinion of different players varies the most",false);
     box.innerHTML=arr.map((x,i)=>listRow(i+1,x.name,`±${(x.range/2).toFixed(1)}`,"#b072d6",x.name+(x.role?` — ${x.role}`:''))).join("");
   })();
 
@@ -1464,7 +1507,7 @@ function renderStats(){
       const col=PALETTE[i%PALETTE.length];
       return {label:p.character_name,data,borderColor:col,backgroundColor:col+"22",pointBackgroundColor:col,borderWidth:2};
     });
-    const ctx=mkCard(grid,"Player Sentiment by Group","Each player's average standing per faction",true,true);
+    const ctx=mkCard(grid,"NPC Regard by Faction — Per Player","Average regard each faction holds for each player",true,true);
     newChart(ctx,{type:"radar",data:{labels:groups,datasets:ds},
       options:baseOpts({scales:{r:{min:-20,max:20,angleLines:{color:CH.grid},grid:{color:CH.grid},pointLabels:{color:CH.parch,font:{size:11}},ticks:{color:CH.faint,backdropColor:"transparent",stepSize:10}}}})});
   })();
@@ -1472,7 +1515,7 @@ function renderStats(){
   // 12. Rate individual NPCs — top/bottom by average
   (function(){
     const rated=npcs.map(n=>({n,v:npcEffectiveScore(n.id)})).filter(x=>x.v!==null).sort((a,b)=>b.v-a.v);
-    const ctx=mkCard(grid,"Full NPC Rating","All NPCs with explicit standings, best to worst",true,true);
+    const ctx=mkCard(grid,"Full NPC Regard Ranking","All NPCs ranked by how much they like the party (best to worst)",true,true);
     const top=rated.slice(0,20);
     newChart(ctx,{type:"bar",data:{
       labels:top.map(x=>x.n.name),
@@ -1490,7 +1533,7 @@ function renderStats(){
       const ss=STATS.scores.filter(s=>s.account_id===p.id&&s.value!==0);
       return ss.length? +(ss.reduce((a,b)=>a+statEffective(b.value,b.account_id),0)/ss.length).toFixed(1) : 0;
     });
-    const ctx=mkCard(grid,"Average Standing Held — by Player","Whose overall outlook is warmest vs coldest",false,false);
+    const ctx=mkCard(grid,"Average NPC Regard — by Player","Which player is best-liked by NPCs on average",false,false);
     newChart(ctx,{type:"bar",data:{labels:players.map(p=>p.character_name),datasets:[{data,backgroundColor:data.map(v=>v>=0?CH.posD:CH.negD),borderRadius:3}]},
       options:baseOpts({plugins:{legend:{display:false}},scales:{x:{ticks:{color:CH.parch,font:{size:10}},grid:{display:false}},y:{min:-20,max:20,ticks:{color:CH.dim},grid:{color:CH.grid}}}})});
   })();
