@@ -188,6 +188,20 @@
     padding:3px 10px;border-radius:12px;font-family:'Cinzel',serif;font-size:.75rem;letter-spacing:.06em;margin-left:10px}
   .honor-chip:hover{background:rgba(201,162,75,.2)}
   .honor-tag{font-size:.65rem;color:var(--gold-dim);margin-left:4px;cursor:help}
+  /* Easter egg sigil — looks like a decorative mark, barely visible */
+  .egg-sigil{
+    position:absolute;top:7px;right:10px;
+    font-size:.65rem;color:var(--edge2);text-decoration:none;line-height:1;
+    opacity:.28;transition:opacity .3s;z-index:2;
+  }
+  .egg-sigil:hover{opacity:.7;color:var(--gold-dim)}
+  .egg-sigil-side{
+    position:relative;top:auto;right:auto;
+    font-size:.7rem;vertical-align:middle;margin-left:5px;opacity:.2;
+  }
+  .egg-sigil-side:hover{opacity:.6}
+  .egg-details summary::-webkit-details-marker{display:none}
+  .egg-details summary::marker{display:none}
   .honor-note{margin:8px 0 0;padding:7px 10px;background:rgba(201,162,75,.08);border-left:2px solid var(--gold-dim);
     border-radius:3px;font-size:.82rem;color:var(--gold-dim);font-style:italic}
   .honor-sub{font-size:.72rem;color:var(--gold-dim);grid-column:1;padding:0 0 4px;letter-spacing:.02em}
@@ -352,6 +366,7 @@
     <div class="brand">
       <div><h1>D&amp;D NPC Honor Tracker</h1></div>
     </div>
+    <a href="wiki.html" class="topbtn" style="text-decoration:none">← Wiki</a>
     <div class="whoami" id="whoami"></div>
     <button class="topbtn" id="pwBtn">Change Passphrase</button>
     <button class="topbtn" id="logoutBtn">Logout</button>
@@ -375,6 +390,7 @@
     </div>
     <button class="chip" id="cHidedead">Hide deceased</button>
     <button class="chip" id="cPortraits">Portraits</button>
+    <button class="chip on" id="cGroups">Groupings</button>
     <span class="count" id="count"></span>
   </div>
 
@@ -414,6 +430,7 @@ let STATE = { npcs:[], scores:{}, notes:{}, honor_score:0 };
 let selectedId = null;
 let reorderMode = false;
 let portraitsMode = false;
+let portraitGrouped = true; // whether portraits mode shows groups
 let previewMode = null; // { name, honor_score } when DM is previewing as player
 let players = []; // DM
 
@@ -517,7 +534,10 @@ function buildGroupFilter(){
 function repOf(id){ return STATE.scores[id] ?? 0; } // raw DM-set value
 function honorBonus(){ return Math.round(STATE.honor_score / 10); }
 // Effective displayed score: add honor to 0..10 range, cap at 10
+// Honor does NOT apply to deceased NPCs
 function effectiveScore(id){
+  const n = STATE.npcs.find(x=>x.id===id);
+  if(n && n.deceased) return repOf(id); // deceased: no honor bonus
   const base = repOf(id);
   const bonus = honorBonus();
   if(bonus === 0 || base < 0 || base > 10) return base;
@@ -578,15 +598,33 @@ function cardHTML(n){
     </div>`;
   }
   return `<div class="card ${n.deceased?'dead':''} ${n.id===selectedId?'sel':''}" data-id="${n.id}">
+    ${n.easter_egg_url && n.easter_egg_enabled ?`<a class="egg-sigil" href="${esc(n.easter_egg_url)}" target="_blank" rel="noopener" title="${esc(n.easter_egg_label||"✦")}" onclick="event.stopPropagation()">✦</a>`:''}
     <div class="nm">${esc(n.name)}</div>
     ${n.role?`<div class="role">${esc(n.role)}</div>`:''}
     ${pos?`<div class="pos">${esc(pos)}</div>`:''}
     ${n.status?`<span class="status">${esc(n.status)}</span>`:''}
     <div class="rep">
-      <div class="rep-top"><span class="rep-lbl">Standing</span>
+      <div class="rep-top"><span class="rep-lbl">NPC Regard</span>
         <span class="rep-val" style="color:${repColor(v)}">${v>0?'+':''}${v} · ${repWord(v)}${hasBonus?` <span class="honor-tag" title="Includes +${v-base} Honor bonus">⚔</span>`:""}</span></div>
       ${repBar(v)}
       <div class="rep-words"><span>−20</span><span>0</span><span>+20</span></div>
+    </div>
+  </div>`;
+}
+
+function portraitCardHTML(n){
+  const v = effectiveScore(n.id);
+  const pct = Math.abs(v)/20*50;
+  const left = v>=0?50:50-pct;
+  const fill = v>0?"var(--pos-bright)":v<0?"var(--blood-bright)":"transparent";
+  const url = STORAGE_PUBLIC + esc(n.portrait_path);
+  return `<div class="portrait-card ${n.deceased?'dead':''} ${n.id===selectedId?'sel':''}" data-id="${n.id}">
+    <img src="${url}" alt="" onerror="this.style.display='none';this.nextSibling.style.display='flex'"/>
+    <div class="pc-ph" style="display:none">${esc((n.name||"?").charAt(0))}</div>
+    <div class="pc-info">
+      <div class="pc-name" title="${esc(n.name+(n.role?" — "+n.role:""))}">${esc(n.name)}</div>
+      <div class="pc-rep">${v>0?"+":""}${v} · ${repWord(v)}</div>
+      <div class="pc-bar"><div class="pc-bar-mid"></div><div class="pc-bar-fill" style="left:${left}%;width:${pct}%;background:${fill}"></div></div>
     </div>
   </div>`;
 }
@@ -636,26 +674,23 @@ function render(){
     const without = list.filter(n=>!n.portrait_path);
     if(!withPortrait.length){ main.innerHTML=`<div class="empty">No NPCs with portraits in the current filter.</div>`; return; }
     document.getElementById("count").textContent = `${withPortrait.length} portraits (${without.length} without)`;
-    const html = `<div class="portrait-grid">${withPortrait.map(n=>{
-      const v = effectiveScore(n.id);
-      const pct = Math.abs(v)/20*50;
-      const left = v>=0?50:50-pct;
-      const fillColor = v>0?"var(--pos-bright)":v<0?"var(--blood-bright)":"transparent";
-      const dotPos = (v+20)/40*100;
-      return `<div class="portrait-card ${n.deceased?'dead':''} ${n.id===selectedId?'sel':''}" data-id="${n.id}">
-        <img src="${STORAGE_PUBLIC}${esc(n.portrait_path)}" alt="" onerror="this.style.display='none';this.nextSibling.style.display='flex'"/>
-        <div class="pc-ph" style="display:none">${esc((n.name||'?').charAt(0))}</div>
-        <div class="pc-info">
-          <div class="pc-name" title="${esc(n.name)}">${esc(n.name)}</div>
-          <div class="pc-rep">${v>0?'+':''}${v} · ${repWord(v)}</div>
-          <div class="pc-bar">
-            <div class="pc-bar-mid"></div>
-            <div class="pc-bar-fill" style="left:${left}%;width:${pct}%;background:${fillColor}"></div>
-          </div>
-        </div>
-      </div>`;
-    }).join("")}</div>`;
-    main.innerHTML = html;
+
+    if(!portraitGrouped){
+      // flat grid
+      main.innerHTML=`<div class="portrait-grid">${withPortrait.map(portraitCardHTML).join("")}</div>`;
+    } else {
+      // grouped portrait view — group by grp
+      const groups=[], gmap={};
+      for(const n of withPortrait){
+        const g=n.grp||"Unaffiliated";
+        if(!gmap[g]){gmap[g]={name:g,npcs:[]};groups.push(gmap[g]);}
+        gmap[g].npcs.push(n);
+      }
+      main.innerHTML = groups.map(g=>`<section class="grp">
+        <div class="grp-head"><h2>${esc(g.name)}</h2><div class="rule"></div><span class="gcount">${g.npcs.length}</span></div>
+        <div class="portrait-grid">${g.npcs.map(portraitCardHTML).join("")}</div>
+      </section>`).join("");
+    }
     main.querySelectorAll(".portrait-card").forEach(c=>c.addEventListener("click",()=>openSide(c.dataset.id)));
     return;
   }
@@ -790,10 +825,10 @@ function openSide(id){
     ? `<div class="honor-note">⚔ +${bonus} Honor bonus applied (${STATE.honor_score}/100 honor)</div>` : "";
 
   let html = `${portrait}
-    <div class="side-name">${esc(n.name)}</div>
+    <div class="side-name">${esc(n.name)}${n.easter_egg_url && n.easter_egg_enabled?` <a class="egg-sigil egg-sigil-side" href="${esc(n.easter_egg_url)}" target="_blank" rel="noopener" title="${esc(n.easter_egg_label||"✦")}">✦</a>`:''}</div>
     ${n.role?`<div class="side-role">${esc(n.role)}</div>`:''}
     <div class="rep" style="max-width:280px;margin:16px auto 0">
-      <div class="rep-top"><span class="rep-lbl">Your Standing</span><span class="rep-val" style="color:${repColor(v)}">${v>0?'+':''}${v} · ${repWord(v)}</span></div>
+      <div class="rep-top"><span class="rep-lbl">NPC Regard</span><span class="rep-val" style="color:${repColor(v)}">${v>0?'+':''}${v} · ${repWord(v)}</span></div>
       ${repBar(v)}
       <div class="rep-words"><span>−20</span><span>0</span><span>+20</span></div>
     </div>
@@ -808,6 +843,24 @@ function openSide(id){
   if(ME.is_dm) html += dmSidebarHTML(n);
 
   inner.innerHTML = html;
+
+  // DM: show link badge (clickable, jumps to the linked card)
+  if(ME.is_dm){
+    const linked = n.linked_npc_id
+      ? STATE.npcs.find(x=>x.id===n.linked_npc_id)
+      : STATE.npcs.find(x=>x.linked_npc_id===n.id);
+    if(linked){
+      const badge=document.createElement("div");
+      badge.style.cssText="margin:10px 0 0;padding:7px 10px;background:rgba(91,143,214,.08);border:1px solid rgba(91,143,214,.3);border-radius:3px;font-size:.78rem;color:#5b8fd6;cursor:pointer;transition:.15s";
+      badge.innerHTML=`🔗 Linked to <b>${esc(linked.name)}</b> <span style="opacity:.65;font-size:.7rem">· ${esc(linked.grp||"")}</span>`;
+      badge.onmouseenter=()=>badge.style.background="rgba(91,143,214,.16)";
+      badge.onmouseleave=()=>badge.style.background="rgba(91,143,214,.08)";
+      badge.onclick=()=>openSide(linked.id);
+      const sep=inner.querySelector(".side-sep");
+      if(sep)sep.after(badge);
+    }
+  }
+
   document.getElementById("side").classList.add("open");
 
   const ta = document.getElementById("noteArea");
@@ -1018,12 +1071,54 @@ function openEditor(n){ // n null => new
       <div class="ff"><label>Deceased?</label><select id="e_dead"><option value="false"${!n.deceased?" selected":""}>No</option><option value="true"${n.deceased?" selected":""}>Yes</option></select></div>
       <div class="ff full"><label>Public Note (shown to all players)</label><textarea id="e_pubnote" rows="2" placeholder="e.g. Last seen in Luceras. Offering a bounty for information.">${esc(n.public_note||"")}</textarea></div>
     </div>
-    <div class="modal-actions">
+    <details class="egg-details" style="margin-top:14px;border-top:1px dashed var(--edge);padding-top:12px">
+      <summary style="font-size:.62rem;text-transform:uppercase;letter-spacing:.14em;color:var(--edge2);cursor:pointer;user-select:none;list-style:none;display:flex;align-items:center;gap:6px">
+        <span style="font-size:.8rem">✦</span> Hidden Easter Egg <span style="opacity:.5;font-size:.58rem">(DM only)</span>
+      </summary>
+      <div class="fgrid" style="margin-top:10px">
+        <div class="ff full"><label>Secret URL (opens when sigil is clicked)</label><input id="e_egg_url" type="url" placeholder="https://…" value="${esc(n.easter_egg_url||"")}"/></div>
+        <div class="ff full"><label>Sigil tooltip / hover hint (optional, keep vague)</label><input id="e_egg_label" type="text" placeholder="e.g. ✦  or  A strange mark…" value="${esc(n.easter_egg_label||"")}"/></div>
+        <div class="ff full" style="display:flex;align-items:center;gap:10px;margin-top:2px">
+          <label style="margin:0;text-transform:none;letter-spacing:0;font-size:.88rem;color:var(--parch);cursor:pointer;display:flex;align-items:center;gap:8px">
+            <input type="checkbox" id="e_egg_enabled" ${n.easter_egg_enabled?"checked":""}/>
+            Enable sigil (visible to players)
+          </label>
+        </div>
+      </div>
+      <div style="font-size:.72rem;color:var(--txt-faint);font-style:italic;margin-top:6px;padding:0 2px">Sigil only appears on the NPC card when enabled. Looks decorative — clicking opens the URL in a new tab.</div>
+    </details>
+    <details class="egg-details" style="margin-top:10px;border-top:1px dashed var(--edge);padding-top:12px">
+      <summary style="font-size:.62rem;text-transform:uppercase;letter-spacing:.14em;color:var(--edge2);cursor:pointer;user-select:none;list-style:none;display:flex;align-items:center;gap:6px">
+        <span style="font-size:.8rem">🔗</span> Link to Another NPC <span style="opacity:.5;font-size:.58rem">(DM only)</span>
+      </summary>
+      <div style="margin-top:10px" id="linkSection">
+        <div style="font-size:.8rem;color:var(--txt-faint);margin-bottom:8px">Linked NPCs share scores and portraits automatically. Use for the same person across multiple groups (e.g. Erica Hale as a cadet and as a Major Arcana wielder).</div>
+        <div id="currentLinkDisplay" style="font-size:.86rem;color:var(--parch);margin-bottom:10px">Loading…</div>
+        <div class="ff full"><label>Link to NPC</label><select id="e_linked_npc"><option value="">— none —</option>${STATE.npcs.filter(x=>x.id!==n.id).sort((a,b)=>(a.name||"").localeCompare(b.name||"")).map(x=>`<option value="${x.id}" ${n.linked_npc_id===x.id?"selected":""}>${esc(x.name)}${x.grp?" · "+esc(x.grp):""}</option>`).join("")}</select></div>
+        <div style="font-size:.72rem;color:var(--txt-faint);font-style:italic;margin-top:4px">Saving with a new link will immediately sync existing scores and portrait.</div>
+      </div>
+    </details>
+    <div class="modal-actions" style="margin-top:16px">
       <button class="mini-btn" id="e_cancel">Cancel</button>
       <button class="mini-btn go" id="e_save">${isNew?"Create":"Save Changes"}</button>
     </div>`;
   mb.classList.add("open");
   document.getElementById("e_cancel").onclick=()=>mb.classList.remove("open");
+  // Load current link info
+  if(!isNew && n.id){
+    api("get_npc_link",{npc_id:n.id}).then(r=>{
+      const el=document.getElementById("currentLinkDisplay");
+      if(!el)return;
+      if(r.linked){
+        el.innerHTML=`Currently linked to: <b style="color:var(--parch)">${esc(r.linked.name)}</b><span style="color:var(--txt-faint);font-size:.8rem"> · ${esc(r.linked.grp||"")}</span>`;
+      } else {
+        el.textContent="No link set.";
+      }
+    }).catch(()=>{const el=document.getElementById("currentLinkDisplay");if(el)el.textContent="";});
+  } else {
+    const el=document.getElementById("currentLinkDisplay");
+    if(el)el.textContent="Save this NPC first, then you can link it.";
+  }
   document.getElementById("e_save").onclick=async()=>{
     const g = id=>document.getElementById(id).value.trim();
     const npc = {
@@ -1034,10 +1129,23 @@ function openEditor(n){ // n null => new
       year:readSelectField("e_year")||null, signet:g("e_signet")||null, second_signet:g("e_signet2")||null,
       status:g("e_status")||"Active", deceased: document.getElementById("e_dead").value==="true",
       public_note:g("e_pubnote")||null,
+      easter_egg_url: g("e_egg_url")||null,
+      easter_egg_label: g("e_egg_label")||null,
+      easter_egg_enabled: document.getElementById("e_egg_enabled").checked,
+      linked_npc_id: document.getElementById("e_linked_npc").value || null,
     };
     if(!npc.name){ toast("Name required"); return; }
     if(!isNew) npc.id = n.id;
-    try{ await api("upsert_npc",{npc}); toast(isNew?"NPC created":"NPC saved"); mb.classList.remove("open");
+    const prevLinkedId = n.linked_npc_id || null;
+    const newLinkedId = npc.linked_npc_id;
+    try{
+      await api("upsert_npc",{npc});
+      // If a new link was set, do a one-time sync
+      if(newLinkedId && newLinkedId !== prevLinkedId){
+        toast("Saving and syncing link…");
+        await api("sync_npc_link",{npc_id: npc.id || n.id, linked_npc_id: newLinkedId});
+      }
+      toast(isNew?"NPC created":"NPC saved"); mb.classList.remove("open");
       closeSide(); await refreshState(); }
     catch(e){ toast("Error: "+e.message); }
   };
@@ -1373,14 +1481,18 @@ function buildStatsControls(){
 }
 
 function statHonorBonus(accountId){ if(!_statsIncludeHonor) return 0; const a=STATS.accounts.find(x=>x.id===accountId); return a?Math.round((a.honor_score??0)/10):0; }
-function statEffective(baseVal, accountId){ const b=statHonorBonus(accountId); if(b===0||baseVal<0||baseVal>10)return baseVal; return Math.min(10,baseVal+b); }
+function statEffective(baseVal, accountId, npcId){ 
+  // No honor bonus for deceased NPCs
+  if(npcId){ const n=STATS.npcs.find(x=>x.id===npcId); if(n&&n.deceased) return baseVal; }
+  const b=statHonorBonus(accountId); if(b===0||baseVal<0||baseVal>10)return baseVal; return Math.min(10,baseVal+b); 
+}
 
 function npcEffectiveScore(npcId){
   const ss = _statsPlayerFilter
     ? STATS.scores.filter(s=>s.npc_id===npcId && s.account_id===_statsPlayerFilter)
     : STATS.scores.filter(s=>s.npc_id===npcId);
   if(!ss.length) return null;
-  return ss.reduce((a,b)=>a+statEffective(b.value,b.account_id),0)/ss.length;
+  return ss.reduce((a,b)=>a+statEffective(b.value,b.account_id,b.npc_id),0)/ss.length;
 }
 
 function mkCard(grid, title, sub, wide, tall){
@@ -1422,7 +1534,7 @@ function renderStats(){
   const totalNpcs=npcs.length, deceased=npcs.filter(n=>n.deceased).length;
   const totalNotes=STATS.notes.filter(n=>n.body && n.body.trim()).length;
   const nonZero=STATS.scores.filter(s=>s.value!==0);
-  const allEff=STATS.scores.map(s=>statEffective(s.value,s.account_id));
+  const allEff=STATS.scores.map(s=>statEffective(s.value,s.account_id,s.npc_id));
   const avgAll = allEff.length ? allEff.reduce((a,b)=>a+b,0)/allEff.length : 0;
   const kpiWrap=document.createElement("div"); kpiWrap.className="stat-kpis"; kpiWrap.style.gridColumn="1/-1";
   kpiWrap.innerHTML=`
@@ -1475,7 +1587,7 @@ function renderStats(){
   // 5. Relationships per player (positive vs negative count stacked)
   (function(){
     const byP={}; players.forEach(p=>byP[p.id]={pos:0,neg:0});
-    STATS.scores.forEach(s=>{ if(byP[s.account_id]===undefined)return; const eff=statEffective(s.value,s.account_id); if(eff>0)byP[s.account_id].pos++; else if(eff<0)byP[s.account_id].neg++; });
+    STATS.scores.forEach(s=>{ if(byP[s.account_id]===undefined)return; const eff=statEffective(s.value,s.account_id,s.npc_id); if(eff>0)byP[s.account_id].pos++; else if(eff<0)byP[s.account_id].neg++; });
     const labels=players.map(p=>p.character_name);
     const ctx=mkCard(grid,"NPCs Viewing Each Player Favourably vs Unfavourably","How many NPCs like vs dislike each player",false,false);
     newChart(ctx,{type:"bar",data:{labels,datasets:[
@@ -1488,7 +1600,7 @@ function renderStats(){
   (function(){
     const data=players.map(p=>{
       const ss=STATS.scores.filter(s=>s.account_id===p.id);
-      return ss.reduce((a,b)=>a+statEffective(b.value,b.account_id),0);
+      return ss.reduce((a,b)=>a+statEffective(b.value,b.account_id,b.npc_id),0);
     });
     const ctx=mkCard(grid,"Total NPC Regard — by Player","Sum of all NPC standings toward each player (raw comparison)",false,false);
     newChart(ctx,{type:"bar",data:{labels:players.map(p=>p.character_name),datasets:[{data,backgroundColor:data.map(v=>v>=0?CH.posD:CH.negD),borderRadius:3}]},
@@ -1512,7 +1624,7 @@ function renderStats(){
   // 8. Most polarizing NPCs
   (function(){
     const arr=npcs.map(n=>{
-      const ss=STATS.scores.filter(s=>s.npc_id===n.id).map(s=>statEffective(s.value,s.account_id));
+      const ss=STATS.scores.filter(s=>s.npc_id===n.id).map(s=>statEffective(s.value,s.account_id,s.npc_id));
       if(ss.length<2)return null;
       const range=Math.max(...ss)-Math.min(...ss);
       return {name:n.name,role:n.role,range};
@@ -1553,7 +1665,7 @@ function renderStats(){
     if(groups.length<3)return;
     const ds=players.map((p,i)=>{
       const data=groups.map(g=>{
-        const vals=npcs.filter(n=>n.grp===g).map(n=>{ const s=STATS.scores.find(x=>x.npc_id===n.id&&x.account_id===p.id); return s?statEffective(s.value,p.id):null; }).filter(v=>v!==null);
+        const vals=npcs.filter(n=>n.grp===g).map(n=>{ const s=STATS.scores.find(x=>x.npc_id===n.id&&x.account_id===p.id); return s?statEffective(s.value,p.id,n.id):null; }).filter(v=>v!==null);
         return vals.length? +(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1) : 0;
       });
       const col=PALETTE[i%PALETTE.length];
@@ -1583,7 +1695,7 @@ function renderStats(){
   (function(){
     const data=players.map(p=>{
       const ss=STATS.scores.filter(s=>s.account_id===p.id&&s.value!==0);
-      return ss.length? +(ss.reduce((a,b)=>a+statEffective(b.value,b.account_id),0)/ss.length).toFixed(1) : 0;
+      return ss.length? +(ss.reduce((a,b)=>a+statEffective(b.value,b.account_id,b.npc_id),0)/ss.length).toFixed(1) : 0;
     });
     const ctx=mkCard(grid,"Average NPC Regard — by Player","Which player is best-liked by NPCs on average",false,false);
     newChart(ctx,{type:"bar",data:{labels:players.map(p=>p.character_name),datasets:[{data,backgroundColor:data.map(v=>v>=0?CH.posD:CH.negD),borderRadius:3}]},
@@ -1670,7 +1782,16 @@ document.getElementById("fGroup").addEventListener("change", e=>{ F.group=e.targ
 document.getElementById("fStatus").addEventListener("change", e=>{ F.status=e.target.value; render(); });
 document.getElementById("fSort").addEventListener("change", e=>{ F.sort=e.target.value; render(); });
 document.getElementById("cHidedead").addEventListener("click", e=>{ F.hideDead=!F.hideDead; e.target.classList.toggle("on",F.hideDead); render(); });
-document.getElementById("cPortraits").addEventListener("click", e=>{ portraitsMode=!portraitsMode; e.target.classList.toggle("on",portraitsMode); closeSide(); render(); });
+document.getElementById("cPortraits").addEventListener("click", e=>{
+  portraitsMode=!portraitsMode;
+  e.target.classList.toggle("on",portraitsMode);
+  // Show groupings chip only in portrait mode
+  document.getElementById("cGroups").style.display = portraitsMode ? "" : "none";
+  closeSide(); render();
+});
+document.getElementById("cGroups").addEventListener("click", e=>{ portraitGrouped=!portraitGrouped; e.target.classList.toggle("on",portraitGrouped); render(); });
+// Hide groupings chip initially (only relevant in portrait mode)
+document.getElementById("cGroups").style.display = "none";
 document.getElementById("modalBg").addEventListener("click", e=>{ if(e.target.id==="modalBg") e.currentTarget.classList.remove("open"); });
 document.addEventListener("keydown", e=>{ if(e.key==="Escape"){ closeSide(); document.getElementById("modalBg").classList.remove("open"); } });
 
