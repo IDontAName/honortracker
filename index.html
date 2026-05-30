@@ -366,7 +366,6 @@
     <div class="brand">
       <div><h1>D&amp;D NPC Honor Tracker</h1></div>
     </div>
-    <a href="wiki.html" class="topbtn" style="text-decoration:none">← Wiki</a>
     <div class="whoami" id="whoami"></div>
     <button class="topbtn" id="pwBtn">Change Passphrase</button>
     <button class="topbtn" id="logoutBtn">Logout</button>
@@ -533,15 +532,24 @@ function buildGroupFilter(){
 
 function repOf(id){ return STATE.scores[id] ?? 0; } // raw DM-set value
 function honorBonus(){ return Math.round(STATE.honor_score / 10); }
-// Effective displayed score: add honor to 0..10 range, cap at 10
-// Honor does NOT apply to deceased NPCs
+// Honor bonus: full bonus applied, but any amount that pushes past 10 is halved
+// e.g. base=8, bonus=4 → raw=12 → 10 + (12-10)/2 = 11
+function applyHonorBonus(base, bonus){
+  if(bonus === 0 || base < 0) return base;
+  const raw = base + bonus;
+  if(raw <= 10) return raw;           // doesn't exceed 10 — full bonus
+  if(base >= 10) return base + Math.round(bonus / 2); // already at/above 10 — halve entire bonus (rounded)
+  const under = 10 - base;           // portion of bonus that fits under 10
+  const over = bonus - under;        // portion that exceeds 10
+  return 10 + Math.round(over / 2);  // full up to 10, half beyond (rounded)
+}
+// Effective displayed score — honor does NOT apply to deceased NPCs
 function effectiveScore(id){
   const n = STATE.npcs.find(x=>x.id===id);
-  if(n && n.deceased) return repOf(id); // deceased: no honor bonus
+  if(n && n.deceased) return repOf(id);
   const base = repOf(id);
-  const bonus = honorBonus();
-  if(bonus === 0 || base < 0 || base > 10) return base;
-  return Math.min(10, base + bonus);
+  if(base > 10) return base; // strongly trusted (11-20): unaffected
+  return applyHonorBonus(base, honorBonus());
 }
 
 function filtered(){
@@ -1094,7 +1102,10 @@ function openEditor(n){ // n null => new
       <div style="margin-top:10px" id="linkSection">
         <div style="font-size:.8rem;color:var(--txt-faint);margin-bottom:8px">Linked NPCs share scores and portraits automatically. Use for the same person across multiple groups (e.g. Erica Hale as a cadet and as a Major Arcana wielder).</div>
         <div id="currentLinkDisplay" style="font-size:.86rem;color:var(--parch);margin-bottom:10px">Loading…</div>
-        <div class="ff full"><label>Link to NPC</label><select id="e_linked_npc"><option value="">— none —</option>${STATE.npcs.filter(x=>x.id!==n.id).sort((a,b)=>(a.name||"").localeCompare(b.name||"")).map(x=>`<option value="${x.id}" ${n.linked_npc_id===x.id?"selected":""}>${esc(x.name)}${x.grp?" · "+esc(x.grp):""}</option>`).join("")}</select></div>
+        <div class="ff full"><label>Link to NPC</label><select id="e_linked_npc"><option value="">— none —</option>${STATE.npcs.filter(x=>x.id!==n.id).sort((a,b)=>(a.name||"").localeCompare(b.name||"")).map(x=>{
+          const label = [x.name, x.role, x.grp].filter(Boolean).join(" · ");
+          return `<option value="${x.id}" ${n.linked_npc_id===x.id?"selected":""}>${esc(label)}</option>`;
+        }).join("")}</select></div>
         <div style="font-size:.72rem;color:var(--txt-faint);font-style:italic;margin-top:4px">Saving with a new link will immediately sync existing scores and portrait.</div>
       </div>
     </details>
@@ -1224,12 +1235,101 @@ function addDMRosterButton(){
   const mk=(id,label,fn)=>{ const b=document.createElement("button"); b.className="topbtn"; b.id=id; b.textContent=label; b.onclick=fn; bar.insertBefore(b, anchor); };
   mk("dmAddBtn","+ Add NPC",()=>openEditor(null));
   mk("dmReorderBtn","Reorder",toggleReorder);
+  mk("dmLinkBtn","🔗 Link NPCs",openLinkNpcs);
   mk("dmRenameBtn","Rename Labels",openRenameLabels);
   mk("dmPreviewBtn","Preview As…",openPreviewPicker);
   mk("dmAccountsBtn","Accounts",openAccountManager);
   mk("dmStatsBtn","Statistics",openStats);
   mk("dmNotesBtn","Player Notes",openPlayerNotes);
   mk("dmExportBtn","Export Backup",doExport);
+}
+
+// ---------- LINK NPCs ----------
+function openLinkNpcs(){
+  const mb=document.getElementById("modalBg"), m=document.getElementById("modal");
+  m.innerHTML=`<h3 style="color:var(--parch);font-family:'Cinzel',serif;font-size:1.2rem;margin-bottom:4px">🔗 Link NPCs</h3>
+    <div class="msub" style="color:var(--txt-faint);font-style:italic;font-size:.86rem;margin-bottom:16px">
+      Pick the <b style="color:var(--parch)">base NPC</b> (A) then the <b style="color:var(--parch)">linked NPC</b> (B).<br/>
+      A's scores and portrait will overwrite B's. From then on they stay in sync.
+    </div>
+    <div class="fgrid">
+      <div class="ff full">
+        <label>Base NPC (A) — the one whose data wins</label>
+        <input id="lnSearchA" placeholder="Search name, role, group…" style="background:var(--ink);border:1px solid var(--edge);border-radius:3px;color:var(--txt);padding:8px 10px;width:100%;margin-bottom:6px"/>
+        <select id="lnSelectA" size="6" style="background:var(--ink);border:1px solid var(--edge);border-radius:3px;color:var(--txt);padding:4px;width:100%;font-size:.86rem"></select>
+      </div>
+      <div class="ff full">
+        <label>Link To (B) — will be overwritten by A on first sync</label>
+        <input id="lnSearchB" placeholder="Search name, role, group…" style="background:var(--ink);border:1px solid var(--edge);border-radius:3px;color:var(--txt);padding:8px 10px;width:100%;margin-bottom:6px"/>
+        <select id="lnSelectB" size="6" style="background:var(--ink);border:1px solid var(--edge);border-radius:3px;color:var(--txt);padding:4px;width:100%;font-size:.86rem"></select>
+      </div>
+    </div>
+    <div id="lnPreview" style="min-height:24px;font-size:.82rem;color:var(--gold-dim);font-style:italic;margin-top:8px;text-align:center"></div>
+    <div class="modal-actions" style="margin-top:14px">
+      <button class="mini-btn" onclick="document.getElementById('modalBg').classList.remove('open')">Cancel</button>
+      <button class="mini-btn go" id="lnSaveBtn" disabled onclick="saveLinkNpcs()">Link & Sync</button>
+    </div>`;
+  mb.classList.add("open");
+
+  // Build NPC option list — name · role · group, sorted by name
+  const allNpcs = STATE.npcs.slice().sort((a,b)=>(a.name||"").localeCompare(b.name||""));
+  function npcLabel(n){ return [n.name,n.role,n.grp].filter(Boolean).join(" · "); }
+  function buildOptions(npcs, excludeId){
+    return npcs.filter(n=>n.id!==excludeId).map(n=>`<option value="${n.id}">${esc(npcLabel(n))}</option>`).join("");
+  }
+  function populateList(selectEl, searchVal, excludeId){
+    const q=searchVal.toLowerCase();
+    const filtered=allNpcs.filter(n=>n.id!==excludeId&&(!q||npcLabel(n).toLowerCase().includes(q)));
+    selectEl.innerHTML=buildOptions(filtered, null);
+  }
+
+  const selA=document.getElementById("lnSelectA");
+  const selB=document.getElementById("lnSelectB");
+  const searchA=document.getElementById("lnSearchA");
+  const searchB=document.getElementById("lnSearchB");
+  const preview=document.getElementById("lnPreview");
+  const saveBtn=document.getElementById("lnSaveBtn");
+
+  populateList(selA, "", null);
+  populateList(selB, "", null);
+
+  function updatePreview(){
+    const aId=selA.value, bId=selB.value;
+    if(aId&&bId&&aId!==bId){
+      const a=STATE.npcs.find(n=>n.id===aId), b=STATE.npcs.find(n=>n.id===bId);
+      preview.innerHTML=`<b style="color:var(--parch)">${esc(npcLabel(a))}</b> <span style="color:var(--txt-faint)">will sync onto</span> <b style="color:var(--parch)">${esc(npcLabel(b))}</b>`;
+      saveBtn.disabled=false;
+    } else {
+      preview.textContent=aId===bId&&aId?"Can't link an NPC to itself.":"Select both NPCs to preview.";
+      saveBtn.disabled=true;
+    }
+  }
+
+  searchA.oninput=()=>{ populateList(selA,searchA.value,selB.value); updatePreview(); };
+  searchB.oninput=()=>{ populateList(selB,searchB.value,selA.value); updatePreview(); };
+  selA.onchange=updatePreview;
+  selB.onchange=updatePreview;
+}
+
+async function saveLinkNpcs(){
+  const aId=document.getElementById("lnSelectA").value;
+  const bId=document.getElementById("lnSelectB").value;
+  if(!aId||!bId||aId===bId){ toast("Select two different NPCs"); return; }
+  const btn=document.getElementById("lnSaveBtn");
+  btn.disabled=true; btn.textContent="Syncing…";
+  try{
+    // Save the link on A (npc_id=A, linked_npc_id=B)
+    const a=STATE.npcs.find(n=>n.id===aId);
+    await api("upsert_npc",{npc:{...a, linked_npc_id:bId}});
+    // Run the one-time sync (A overwrites B)
+    await api("sync_npc_link",{npc_id:aId, linked_npc_id:bId});
+    // Update local state
+    const localA=STATE.npcs.find(n=>n.id===aId);
+    if(localA) localA.linked_npc_id=bId;
+    toast("NPCs linked and synced ✓");
+    document.getElementById("modalBg").classList.remove("open");
+    await refreshState();
+  }catch(e){ toast("Error: "+e.message); btn.disabled=false; btn.textContent="Link & Sync"; }
 }
 
 function toggleReorder(){
@@ -1481,10 +1581,11 @@ function buildStatsControls(){
 }
 
 function statHonorBonus(accountId){ if(!_statsIncludeHonor) return 0; const a=STATS.accounts.find(x=>x.id===accountId); return a?Math.round((a.honor_score??0)/10):0; }
-function statEffective(baseVal, accountId, npcId){ 
-  // No honor bonus for deceased NPCs
+function statEffective(baseVal, accountId, npcId){
   if(npcId){ const n=STATS.npcs.find(x=>x.id===npcId); if(n&&n.deceased) return baseVal; }
-  const b=statHonorBonus(accountId); if(b===0||baseVal<0||baseVal>10)return baseVal; return Math.min(10,baseVal+b); 
+  if(baseVal < 0 || baseVal > 10) return baseVal;
+  const bonus = statHonorBonus(accountId);
+  return applyHonorBonus(baseVal, bonus);
 }
 
 function npcEffectiveScore(npcId){
