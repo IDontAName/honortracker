@@ -425,13 +425,14 @@ const TKEY = "basgiath_session_v1";
 
 let TOKEN = localStorage.getItem(TKEY) || null;
 let ME = { name:null, is_dm:false, honor_score:0 };
-let STATE = { npcs:[], scores:{}, notes:{}, honor_score:0 };
+let STATE = { npcs:[], scores:{}, notes:{}, honor_score:0, rep_groups:[] };
 let selectedId = null;
 let reorderMode = false;
 let portraitsMode = false;
-let portraitGrouped = true; // whether portraits mode shows groups
-let previewMode = null; // { name, honor_score } when DM is previewing as player
-let players = []; // DM
+let portraitGrouped = true;
+let previewMode = null;
+let players = [];
+let _pollTimer = null;
 
 // ---------- API helper ----------
 async function api(action, body={}){
@@ -516,9 +517,29 @@ async function refreshState(){
   STATE.scores = r.scores || {};
   STATE.notes = r.notes || {};
   STATE.honor_score = r.honor_score ?? 0;
+  STATE.rep_groups = r.rep_groups || [];
   if(!ME.is_dm) ME.honor_score = STATE.honor_score;
   buildGroupFilter();
   render();
+  startPolling();
+}
+
+// Lightweight polling — only fetches scores, merges silently
+async function pollScores(){
+  if(!TOKEN) return;
+  try{
+    const r = await api("poll_scores");
+    const changed = Object.entries(r.scores||{}).some(([id,v])=>STATE.scores[id]!==v)
+      || Object.keys(STATE.scores).some(id=>r.scores[id]===undefined);
+    if(changed){ STATE.scores=r.scores||{}; render(); if(selectedId) openSide(selectedId); }
+  }catch(e){}
+}
+function startPolling(){
+  stopPolling();
+  _pollTimer = setInterval(pollScores, 8000); // every 8 seconds
+}
+function stopPolling(){
+  if(_pollTimer){ clearInterval(_pollTimer); _pollTimer=null; }
 }
 
 // ---------- FILTERS / SORT ----------
@@ -852,18 +873,13 @@ function openSide(id){
 
   inner.innerHTML = html;
 
-  // DM: show link badge (clickable, jumps to the linked card)
-  if(ME.is_dm){
-    const linked = n.linked_npc_id
-      ? STATE.npcs.find(x=>x.id===n.linked_npc_id)
-      : STATE.npcs.find(x=>x.linked_npc_id===n.id);
-    if(linked){
+  // DM: show rep group badge if this NPC belongs to one
+  if(ME.is_dm && n.rep_group_id){
+    const grp = STATE.rep_groups.find(g=>g.id===n.rep_group_id);
+    if(grp){
       const badge=document.createElement("div");
-      badge.style.cssText="margin:10px 0 0;padding:7px 10px;background:rgba(91,143,214,.08);border:1px solid rgba(91,143,214,.3);border-radius:3px;font-size:.78rem;color:#5b8fd6;cursor:pointer;transition:.15s";
-      badge.innerHTML=`🔗 Linked to <b>${esc(linked.name)}</b> <span style="opacity:.65;font-size:.7rem">· ${esc(linked.grp||"")}</span>`;
-      badge.onmouseenter=()=>badge.style.background="rgba(91,143,214,.16)";
-      badge.onmouseleave=()=>badge.style.background="rgba(91,143,214,.08)";
-      badge.onclick=()=>openSide(linked.id);
+      badge.style.cssText="margin:10px 0 0;padding:7px 10px;background:rgba(91,143,214,.08);border:1px solid rgba(91,143,214,.3);border-radius:3px;font-size:.78rem;color:#5b8fd6";
+      badge.innerHTML=`🔗 Rep Group: <b>${esc(grp.name)}</b> — scores stay in sync with all members`;
       const sep=inner.querySelector(".side-sep");
       if(sep)sep.after(badge);
     }
@@ -944,7 +960,7 @@ async function loadDMPlayers(n){
       const baseVal = scores[p.id] ?? 0;
       const honor = p.honor_score ?? 0;
       const hb = Math.round(honor/10);
-      const effective = (baseVal >= 0 && baseVal <= 10 && hb > 0) ? Math.min(10, baseVal + hb) : baseVal;
+      const effective = (baseVal >= 0 && baseVal <= 10 && hb > 0) ? applyHonorBonus(baseVal, hb) : baseVal;
       const showBonus = effective !== baseVal;
       const valColor = repColor(baseVal);
       return `<div class="pl-grid" data-aid="${p.id}" data-honor="${honor}" data-npcid="${n.id}">
@@ -954,7 +970,7 @@ async function loadDMPlayers(n){
           <div class="pl-val" style="color:${valColor}">${baseVal>0?'+':''}${baseVal}</div>
           <button class="pl-step" data-delta="1">+</button>
         </div>
-        ${showBonus?`<div class="pl-honor-sub">⚔ +${hb} honor → effective ${effective>0?'+':''}${effective}</div>`:''}
+        ${showBonus?`<div class="pl-honor-sub">⚔ +${hb} honor → effectively ${effective>0?'+':''}${effective}</div>`:''}
       </div>`;
     }).join("");
 
@@ -969,9 +985,9 @@ async function loadDMPlayers(n){
         // update honor subnote
         let sub=grid.querySelector(".pl-honor-sub");
         if(v>=0 && v<=10 && hb>0){
-          const eff=Math.min(10,v+hb);
+          const eff=applyHonorBonus(v,hb);
           if(!sub){ sub=document.createElement("div"); sub.className="pl-honor-sub"; grid.appendChild(sub); }
-          sub.textContent=`⚔ +${hb} honor → effective ${eff>0?'+':''}${eff}`;
+          sub.textContent=`⚔ +${hb} honor → effectively ${eff>0?'+':''}${eff}`;
         } else if(sub){ sub.remove(); }
       };
 
@@ -1097,16 +1113,21 @@ function openEditor(n){ // n null => new
     </details>
     <details class="egg-details" style="margin-top:10px;border-top:1px dashed var(--edge);padding-top:12px">
       <summary style="font-size:.62rem;text-transform:uppercase;letter-spacing:.14em;color:var(--edge2);cursor:pointer;user-select:none;list-style:none;display:flex;align-items:center;gap:6px">
-        <span style="font-size:.8rem">🔗</span> Link to Another NPC <span style="opacity:.5;font-size:.58rem">(DM only)</span>
+        <span style="font-size:.8rem">🖼</span> Portrait &amp; Reputation Group <span style="opacity:.5;font-size:.58rem">(DM only)</span>
       </summary>
-      <div style="margin-top:10px" id="linkSection">
-        <div style="font-size:.8rem;color:var(--txt-faint);margin-bottom:8px">Linked NPCs share scores and portraits automatically. Use for the same person across multiple groups (e.g. Erica Hale as a cadet and as a Major Arcana wielder).</div>
-        <div id="currentLinkDisplay" style="font-size:.86rem;color:var(--parch);margin-bottom:10px">Loading…</div>
-        <div class="ff full"><label>Link to NPC</label><select id="e_linked_npc"><option value="">— none —</option>${STATE.npcs.filter(x=>x.id!==n.id).sort((a,b)=>(a.name||"").localeCompare(b.name||"")).map(x=>{
-          const label = [x.name, x.role, x.grp].filter(Boolean).join(" · ");
-          return `<option value="${x.id}" ${n.linked_npc_id===x.id?"selected":""}>${esc(label)}</option>`;
-        }).join("")}</select></div>
-        <div style="font-size:.72rem;color:var(--txt-faint);font-style:italic;margin-top:4px">Saving with a new link will immediately sync existing scores and portrait.</div>
+      <div class="fgrid" style="margin-top:10px">
+        <div class="ff full"><label>Reputation Group (syncs scores across all members)</label>
+          <select id="e_rep_group">
+            <option value="">— none —</option>
+            ${STATE.rep_groups.map(g=>`<option value="${g.id}" ${n.rep_group_id===g.id?"selected":""}>${esc(g.name)}</option>`).join("")}
+          </select>
+        </div>
+        ${!isNew?`<div class="ff full"><label>Copy Portrait From Another NPC</label>
+          <select id="e_copy_portrait">
+            <option value="">— don't copy —</option>
+            ${STATE.npcs.filter(x=>x.id!==n.id&&x.portrait_path).sort((a,b)=>(a.name||"").localeCompare(b.name||"")).map(x=>`<option value="${x.id}">${esc([x.name,x.role,x.grp].filter(Boolean).join(" · "))}</option>`).join("")}
+          </select>
+        </div>`:""}
       </div>
     </details>
     <div class="modal-actions" style="margin-top:16px">
@@ -1115,21 +1136,6 @@ function openEditor(n){ // n null => new
     </div>`;
   mb.classList.add("open");
   document.getElementById("e_cancel").onclick=()=>mb.classList.remove("open");
-  // Load current link info
-  if(!isNew && n.id){
-    api("get_npc_link",{npc_id:n.id}).then(r=>{
-      const el=document.getElementById("currentLinkDisplay");
-      if(!el)return;
-      if(r.linked){
-        el.innerHTML=`Currently linked to: <b style="color:var(--parch)">${esc(r.linked.name)}</b><span style="color:var(--txt-faint);font-size:.8rem"> · ${esc(r.linked.grp||"")}</span>`;
-      } else {
-        el.textContent="No link set.";
-      }
-    }).catch(()=>{const el=document.getElementById("currentLinkDisplay");if(el)el.textContent="";});
-  } else {
-    const el=document.getElementById("currentLinkDisplay");
-    if(el)el.textContent="Save this NPC first, then you can link it.";
-  }
   document.getElementById("e_save").onclick=async()=>{
     const g = id=>document.getElementById(id).value.trim();
     const npc = {
@@ -1143,21 +1149,22 @@ function openEditor(n){ // n null => new
       easter_egg_url: g("e_egg_url")||null,
       easter_egg_label: g("e_egg_label")||null,
       easter_egg_enabled: document.getElementById("e_egg_enabled").checked,
-      linked_npc_id: document.getElementById("e_linked_npc").value || null,
+      rep_group_id: document.getElementById("e_rep_group").value || null,
     };
     if(!npc.name){ toast("Name required"); return; }
     if(!isNew) npc.id = n.id;
-    const prevLinkedId = n.linked_npc_id || null;
-    const newLinkedId = npc.linked_npc_id;
     try{
       await api("upsert_npc",{npc});
-      // If a new link was set, do a one-time sync
-      if(newLinkedId && newLinkedId !== prevLinkedId){
-        toast("Saving and syncing link…");
-        await api("sync_npc_link",{npc_id: npc.id || n.id, linked_npc_id: newLinkedId});
+      // Copy portrait if selected
+      const copyFrom = !isNew && document.getElementById("e_copy_portrait")?.value;
+      if(copyFrom){
+        const r = await api("copy_portrait",{source_npc_id:copyFrom, target_npc_id:npc.id||n.id});
+        const local = STATE.npcs.find(x=>x.id===(npc.id||n.id));
+        if(local) local.portrait_path = r.portrait_path;
       }
       toast(isNew?"NPC created":"NPC saved"); mb.classList.remove("open");
-      closeSide(); await refreshState(); }
+      closeSide(); await refreshState();
+    }
     catch(e){ toast("Error: "+e.message); }
   };
 }
@@ -1235,7 +1242,7 @@ function addDMRosterButton(){
   const mk=(id,label,fn)=>{ const b=document.createElement("button"); b.className="topbtn"; b.id=id; b.textContent=label; b.onclick=fn; bar.insertBefore(b, anchor); };
   mk("dmAddBtn","+ Add NPC",()=>openEditor(null));
   mk("dmReorderBtn","Reorder",toggleReorder);
-  mk("dmLinkBtn","🔗 Link NPCs",openLinkNpcs);
+  mk("dmRepGroupsBtn","🔗 Rep Groups",openRepGroups);
   mk("dmRenameBtn","Rename Labels",openRenameLabels);
   mk("dmPreviewBtn","Preview As…",openPreviewPicker);
   mk("dmAccountsBtn","Accounts",openAccountManager);
@@ -1244,92 +1251,87 @@ function addDMRosterButton(){
   mk("dmExportBtn","Export Backup",doExport);
 }
 
-// ---------- LINK NPCs ----------
-function openLinkNpcs(){
+// ---------- REP GROUPS ----------
+async function openRepGroups(){
   const mb=document.getElementById("modalBg"), m=document.getElementById("modal");
-  m.innerHTML=`<h3 style="color:var(--parch);font-family:'Cinzel',serif;font-size:1.2rem;margin-bottom:4px">🔗 Link NPCs</h3>
-    <div class="msub" style="color:var(--txt-faint);font-style:italic;font-size:.86rem;margin-bottom:16px">
-      Pick the <b style="color:var(--parch)">base NPC</b> (A) then the <b style="color:var(--parch)">linked NPC</b> (B).<br/>
-      A's scores and portrait will overwrite B's. From then on they stay in sync.
-    </div>
-    <div class="fgrid">
-      <div class="ff full">
-        <label>Base NPC (A) — the one whose data wins</label>
-        <input id="lnSearchA" placeholder="Search name, role, group…" style="background:var(--ink);border:1px solid var(--edge);border-radius:3px;color:var(--txt);padding:8px 10px;width:100%;margin-bottom:6px"/>
-        <select id="lnSelectA" size="6" style="background:var(--ink);border:1px solid var(--edge);border-radius:3px;color:var(--txt);padding:4px;width:100%;font-size:.86rem"></select>
-      </div>
-      <div class="ff full">
-        <label>Link To (B) — will be overwritten by A on first sync</label>
-        <input id="lnSearchB" placeholder="Search name, role, group…" style="background:var(--ink);border:1px solid var(--edge);border-radius:3px;color:var(--txt);padding:8px 10px;width:100%;margin-bottom:6px"/>
-        <select id="lnSelectB" size="6" style="background:var(--ink);border:1px solid var(--edge);border-radius:3px;color:var(--txt);padding:4px;width:100%;font-size:.86rem"></select>
-      </div>
-    </div>
-    <div id="lnPreview" style="min-height:24px;font-size:.82rem;color:var(--gold-dim);font-style:italic;margin-top:8px;text-align:center"></div>
-    <div class="modal-actions" style="margin-top:14px">
-      <button class="mini-btn" onclick="document.getElementById('modalBg').classList.remove('open')">Cancel</button>
-      <button class="mini-btn go" id="lnSaveBtn" disabled onclick="saveLinkNpcs()">Link & Sync</button>
+  m.innerHTML=`<h3 style="color:var(--parch);font-family:'Cinzel',serif;font-size:1.2rem;margin-bottom:4px">🔗 Reputation Groups</h3>
+    <div class="msub" style="color:var(--txt-faint);font-style:italic;font-size:.85rem;margin-bottom:14px">NPCs in the same group share the same reputation scores — change one, all update automatically.</div>
+    <div id="rgList"><div class="spinner" style="margin:14px auto"></div></div>
+    <div class="modal-actions" style="margin-top:12px">
+      <button class="mini-btn go" onclick="createRepGroup()">+ New Group</button>
+      <button class="mini-btn" onclick="document.getElementById('modalBg').classList.remove('open')">Close</button>
     </div>`;
   mb.classList.add("open");
-
-  // Build NPC option list — name · role · group, sorted by name
-  const allNpcs = STATE.npcs.slice().sort((a,b)=>(a.name||"").localeCompare(b.name||""));
-  function npcLabel(n){ return [n.name,n.role,n.grp].filter(Boolean).join(" · "); }
-  function buildOptions(npcs, excludeId){
-    return npcs.filter(n=>n.id!==excludeId).map(n=>`<option value="${n.id}">${esc(npcLabel(n))}</option>`).join("");
-  }
-  function populateList(selectEl, searchVal, excludeId){
-    const q=searchVal.toLowerCase();
-    const filtered=allNpcs.filter(n=>n.id!==excludeId&&(!q||npcLabel(n).toLowerCase().includes(q)));
-    selectEl.innerHTML=buildOptions(filtered, null);
-  }
-
-  const selA=document.getElementById("lnSelectA");
-  const selB=document.getElementById("lnSelectB");
-  const searchA=document.getElementById("lnSearchA");
-  const searchB=document.getElementById("lnSearchB");
-  const preview=document.getElementById("lnPreview");
-  const saveBtn=document.getElementById("lnSaveBtn");
-
-  populateList(selA, "", null);
-  populateList(selB, "", null);
-
-  function updatePreview(){
-    const aId=selA.value, bId=selB.value;
-    if(aId&&bId&&aId!==bId){
-      const a=STATE.npcs.find(n=>n.id===aId), b=STATE.npcs.find(n=>n.id===bId);
-      preview.innerHTML=`<b style="color:var(--parch)">${esc(npcLabel(a))}</b> <span style="color:var(--txt-faint)">will sync onto</span> <b style="color:var(--parch)">${esc(npcLabel(b))}</b>`;
-      saveBtn.disabled=false;
-    } else {
-      preview.textContent=aId===bId&&aId?"Can't link an NPC to itself.":"Select both NPCs to preview.";
-      saveBtn.disabled=true;
-    }
-  }
-
-  searchA.oninput=()=>{ populateList(selA,searchA.value,selB.value); updatePreview(); };
-  searchB.oninput=()=>{ populateList(selB,searchB.value,selA.value); updatePreview(); };
-  selA.onchange=updatePreview;
-  selB.onchange=updatePreview;
+  await loadRepGroups();
 }
-
-async function saveLinkNpcs(){
-  const aId=document.getElementById("lnSelectA").value;
-  const bId=document.getElementById("lnSelectB").value;
-  if(!aId||!bId||aId===bId){ toast("Select two different NPCs"); return; }
-  const btn=document.getElementById("lnSaveBtn");
-  btn.disabled=true; btn.textContent="Syncing…";
+async function loadRepGroups(){
+  const box=document.getElementById("rgList"); if(!box) return;
   try{
-    // Save the link on A (npc_id=A, linked_npc_id=B)
-    const a=STATE.npcs.find(n=>n.id===aId);
-    await api("upsert_npc",{npc:{...a, linked_npc_id:bId}});
-    // Run the one-time sync (A overwrites B)
-    await api("sync_npc_link",{npc_id:aId, linked_npc_id:bId});
-    // Update local state
-    const localA=STATE.npcs.find(n=>n.id===aId);
-    if(localA) localA.linked_npc_id=bId;
-    toast("NPCs linked and synced ✓");
-    document.getElementById("modalBg").classList.remove("open");
-    await refreshState();
-  }catch(e){ toast("Error: "+e.message); btn.disabled=false; btn.textContent="Link & Sync"; }
+    const {groups} = await api("list_rep_groups");
+    STATE.rep_groups = groups.map(g=>({id:g.id, name:g.name}));
+    if(!groups.length){ box.innerHTML=`<div style="color:var(--txt-faint);font-style:italic;font-size:.88rem;text-align:center;padding:16px">No groups yet. Create one to start linking NPC reputations.</div>`; return; }
+    box.innerHTML = groups.map(g=>{
+      const members = (g.rep_npcs||[]);
+      return `<div style="background:var(--ink2);border:1px solid var(--edge);border-radius:var(--rad);padding:12px 14px;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <b style="color:var(--parch);font-family:'Cinzel',serif;font-size:.9rem">${esc(g.name)}</b>
+          <span style="color:var(--txt-faint);font-size:.76rem">${members.length} member${members.length!==1?"s":""}</span>
+          <div style="margin-left:auto;display:flex;gap:6px">
+            <button class="mini-btn" onclick="renameRepGroup('${g.id}','${g.name.replace(/'/g,"\\'")}')">Rename</button>
+            <button class="mini-btn danger" onclick="deleteRepGroup('${g.id}')">Delete</button>
+          </div>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px">
+          ${members.map(nm=>`<span style="background:rgba(201,162,75,.1);border:1px solid var(--gold-dim);border-radius:3px;padding:2px 8px;font-size:.76rem;color:var(--parch);display:flex;align-items:center;gap:4px">
+            ${esc([nm.name,nm.role].filter(Boolean).join(" · "))}
+            <button onclick="removeFromGroup('${nm.id}','${g.id}')" style="color:var(--txt-faint);font-size:.8rem;line-height:1;margin-left:2px" title="Remove from group">✕</button>
+          </span>`).join("")}
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <select id="addNpc_${g.id}" style="flex:1;background:var(--ink);border:1px solid var(--edge);border-radius:3px;color:var(--txt);padding:6px 8px;font-size:.83rem">
+            <option value="">Add NPC to this group…</option>
+            ${STATE.npcs.filter(n=>!n.rep_group_id&&!members.find(m=>m.id===n.id)).sort((a,b)=>(a.name||"").localeCompare(b.name||"")).map(n=>`<option value="${n.id}">${esc([n.name,n.role,n.grp].filter(Boolean).join(" · "))}</option>`).join("")}
+          </select>
+          <button class="mini-btn go" onclick="addToGroup('${g.id}')">Add</button>
+        </div>
+      </div>`;
+    }).join("");
+  }catch(e){ box.innerHTML=`<div style="color:var(--blood-bright)">${esc(e.message)}</div>`; }
+}
+async function createRepGroup(){
+  const name=prompt("Group name (e.g. \"Erica Hale\"):");
+  if(!name) return;
+  try{ await api("create_rep_group",{name}); toast("Group created"); await loadRepGroups(); }
+  catch(e){ toast("Error: "+e.message); }
+}
+async function deleteRepGroup(id){
+  if(!confirm("Delete this group? NPCs will be unlinked but their scores stay.")) return;
+  try{ await api("delete_rep_group",{group_id:id}); toast("Group deleted");
+    STATE.rep_groups=STATE.rep_groups.filter(g=>g.id!==id);
+    STATE.npcs.forEach(n=>{ if(n.rep_group_id===id) n.rep_group_id=null; });
+    await loadRepGroups(); }
+  catch(e){ toast("Error: "+e.message); }
+}
+async function renameRepGroup(id, oldName){
+  const name=prompt("New name:", oldName); if(!name||name===oldName) return;
+  try{ await api("rename_rep_group",{group_id:id,name}); toast("Renamed");
+    const g=STATE.rep_groups.find(x=>x.id===id); if(g) g.name=name;
+    await loadRepGroups(); }
+  catch(e){ toast("Error: "+e.message); }
+}
+async function addToGroup(groupId){
+  const sel=document.getElementById("addNpc_"+groupId); if(!sel||!sel.value) return;
+  const npcId=sel.value;
+  try{ await api("set_npc_rep_group",{npc_id:npcId,group_id:groupId});
+    const local=STATE.npcs.find(n=>n.id===npcId); if(local) local.rep_group_id=groupId;
+    toast("Added to group"); await loadRepGroups(); }
+  catch(e){ toast("Error: "+e.message); }
+}
+async function removeFromGroup(npcId, groupId){
+  try{ await api("set_npc_rep_group",{npc_id:npcId,group_id:null});
+    const local=STATE.npcs.find(n=>n.id===npcId); if(local) local.rep_group_id=null;
+    toast("Removed from group"); await loadRepGroups(); }
+  catch(e){ toast("Error: "+e.message); }
 }
 
 function toggleReorder(){
@@ -1416,8 +1418,8 @@ function showHonorExplain(){
     <div style="color:var(--parch);font-size:.97rem;line-height:1.7">
       <p>Your current Honor score is <b style="color:var(--gold);font-size:1.2rem">${h}/100</b>.</p>
       <p style="margin-top:12px">The <b>Honor Bonus</b> is calculated as: <code style="background:var(--ink);padding:2px 6px;border-radius:3px">round(${h} ÷ 10) = +${bonus}</code></p>
-      <p style="margin-top:8px">This bonus is <b>automatically added</b> to any NPC whose standing with you is between 0 and +10. It cannot push a standing above +10.</p>
-      <p style="margin-top:8px">NPCs who already dislike you (negative standing) or who are strongly trusted (+11 to +20) are not affected by your Honor.</p>
+      <p style="margin-top:8px">This bonus is <b>automatically added</b> to any NPC whose base regard for you is 0–10. Past 10, any additional bonus is <b>halved</b> — so it can exceed 10, but with diminishing returns.</p>
+      <p style="margin-top:8px"><b>Example:</b> base 8, +4 honor bonus → raw 12 → 10 + (2÷2) = <b>11</b>. NPCs who already dislike you (negative) or are at 11–20 are not affected.</p>
       <p style="margin-top:8px">Honor is set by the DM and reflects your character's reputation and conduct in the world.</p>
     </div>
     <div class="modal-actions"><button class="mini-btn go" onclick="document.getElementById('modalBg').classList.remove('open')">Got it</button></div>`;
@@ -1873,6 +1875,7 @@ document.getElementById("loginBtn").addEventListener("click", doLogin);
 document.getElementById("pw").addEventListener("keydown", e=>{ if(e.key==="Enter") doLogin(); });
 document.getElementById("logoutBtn").addEventListener("click", async()=>{
   try{ await api("logout"); }catch(e){}
+  stopPolling();
   TOKEN=null; localStorage.removeItem(TKEY); location.reload();
 });
 document.getElementById("pwBtn").addEventListener("click", changePassword);
