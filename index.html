@@ -1268,10 +1268,30 @@ async function loadRepGroups(){
   const box=document.getElementById("rgList"); if(!box) return;
   try{
     const {groups} = await api("list_rep_groups");
-    STATE.rep_groups = groups.map(g=>({id:g.id, name:g.name}));
-    if(!groups.length){ box.innerHTML=`<div style="color:var(--txt-faint);font-style:italic;font-size:.88rem;text-align:center;padding:16px">No groups yet. Create one to start linking NPC reputations.</div>`; return; }
+    STATE.rep_groups = groups.map(g=>({id:g.id, name:g.name, primary_npc_id:g.primary_npc_id}));
+    if(!groups.length){
+      box.innerHTML=`<div style="color:var(--txt-faint);font-style:italic;font-size:.88rem;text-align:center;padding:16px">No groups yet. Create one to start linking NPC reputations.</div>`;
+      return;
+    }
     box.innerHTML = groups.map(g=>{
       const members = (g.rep_npcs||[]);
+      const primaryId = g.primary_npc_id;
+      const npcLabel = n => [n.name,n.role].filter(Boolean).join(" · ");
+
+      const memberChips = members.map(nm=>{
+        const isPrimary = nm.id === primaryId;
+        return `<div style="background:${isPrimary?"rgba(201,162,75,.18)":"rgba(201,162,75,.06)"};border:1px solid ${isPrimary?"var(--gold)":"var(--edge)"};border-radius:3px;padding:3px 8px 3px 6px;font-size:.76rem;color:var(--parch);display:flex;align-items:center;gap:5px;max-width:100%">
+          ${isPrimary?`<span title="Primary — scores sync from here" style="color:var(--gold);font-size:.75rem">★</span>`:`<button onclick="setGroupPrimary('${g.id}','${nm.id}')" title="Make primary (will overwrite others)" style="color:var(--txt-faint);font-size:.72rem;padding:0 2px;line-height:1;background:none;border:none;cursor:pointer" onmouseover="this.style.color='var(--gold)'" onmouseout="this.style.color='var(--txt-faint)'">☆</button>`}
+          <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(npcLabel(nm))}</span>
+          <button onclick="removeFromGroup('${nm.id}','${g.id}')" style="color:var(--txt-faint);font-size:.8rem;line-height:1;margin-left:auto;background:none;border:none;cursor:pointer;flex-shrink:0" title="Remove from group" onmouseover="this.style.color='var(--blood-bright)'" onmouseout="this.style.color='var(--txt-faint)'">✕</button>
+        </div>`;
+      }).join("");
+
+      const primaryName = members.find(m=>m.id===primaryId);
+      const primaryHint = primaryName
+        ? `<div style="font-size:.72rem;color:var(--gold-dim);margin-bottom:8px">★ Primary: <b style="color:var(--gold)">${esc(npcLabel(primaryName))}</b> — their scores are copied to all members when first linked. Click ☆ on any member to change.</div>`
+        : `<div style="font-size:.72rem;color:var(--txt-faint);font-style:italic;margin-bottom:8px">First member added will become primary automatically.</div>`;
+
       return `<div style="background:var(--ink2);border:1px solid var(--edge);border-radius:var(--rad);padding:12px 14px;margin-bottom:10px">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
           <b style="color:var(--parch);font-family:'Cinzel',serif;font-size:.9rem">${esc(g.name)}</b>
@@ -1281,22 +1301,31 @@ async function loadRepGroups(){
             <button class="mini-btn danger" onclick="deleteRepGroup('${g.id}')">Delete</button>
           </div>
         </div>
-        <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px">
-          ${members.map(nm=>`<span style="background:rgba(201,162,75,.1);border:1px solid var(--gold-dim);border-radius:3px;padding:2px 8px;font-size:.76rem;color:var(--parch);display:flex;align-items:center;gap:4px">
-            ${esc([nm.name,nm.role].filter(Boolean).join(" · "))}
-            <button onclick="removeFromGroup('${nm.id}','${g.id}')" style="color:var(--txt-faint);font-size:.8rem;line-height:1;margin-left:2px" title="Remove from group">✕</button>
-          </span>`).join("")}
-        </div>
+        ${primaryHint}
+        <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px">${memberChips}</div>
         <div style="display:flex;gap:8px;align-items:center">
           <select id="addNpc_${g.id}" style="flex:1;background:var(--ink);border:1px solid var(--edge);border-radius:3px;color:var(--txt);padding:6px 8px;font-size:.83rem">
             <option value="">Add NPC to this group…</option>
-            ${STATE.npcs.filter(n=>!n.rep_group_id&&!members.find(m=>m.id===n.id)).sort((a,b)=>(a.name||"").localeCompare(b.name||"")).map(n=>`<option value="${n.id}">${esc([n.name,n.role,n.grp].filter(Boolean).join(" · "))}</option>`).join("")}
+            ${STATE.npcs.filter(n=>!n.rep_group_id).sort((a,b)=>(a.name||"").localeCompare(b.name||"")).map(n=>`<option value="${n.id}">${esc([n.name,n.role,n.grp].filter(Boolean).join(" · "))}</option>`).join("")}
           </select>
           <button class="mini-btn go" onclick="addToGroup('${g.id}')">Add</button>
         </div>
       </div>`;
     }).join("");
   }catch(e){ box.innerHTML=`<div style="color:var(--blood-bright)">${esc(e.message)}</div>`; }
+}
+
+async function setGroupPrimary(groupId, npcId){
+  const npc = STATE.npcs.find(n=>n.id===npcId);
+  if(!confirm(`Make "${npc?.name||"this NPC"}" the primary?\n\nTheir scores will immediately overwrite all other members in this group.`)) return;
+  try{
+    await api("set_group_primary",{group_id:groupId, primary_npc_id:npcId});
+    const g=STATE.rep_groups.find(x=>x.id===groupId);
+    if(g) g.primary_npc_id=npcId;
+    toast("Primary updated and scores synced ✓");
+    await loadRepGroups();
+    await refreshState();
+  }catch(e){ toast("Error: "+e.message); }
 }
 async function createRepGroup(){
   const name=prompt("Group name (e.g. \"Erica Hale\"):");
