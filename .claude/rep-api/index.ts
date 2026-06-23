@@ -101,13 +101,17 @@ async function getPlayerInvestiture(accountId: string) {
   const skillsWithUpgrades = skills.map((s:any)=>({ ...s, upgrades: upgMap[s.id]??[] }));
   const spentInSkills = skills.reduce((a:number,s:any)=>a+s.points_invested,0);
   const spentInSetItems = (setItemsR.data??[]).reduce((a:number,si:any)=>a+si.points_invested,0);
+  const trainingPoints = pool.training_points ?? 0;
+  const regularAvail = pool.total_points - spentInSkills - spentInSetItems;
   return {
     pool,
     skills: skillsWithUpgrades,
     set_items: setItemsR.data ?? [],
     total_points: pool.total_points,
     spent_points: spentInSkills + spentInSetItems,
-    available_points: pool.total_points - spentInSkills - spentInSetItems,
+    available_points: regularAvail,
+    training_points: trainingPoints,
+    burnout_current: pool.burnout_current ?? 0,
   };
 }
 
@@ -185,30 +189,33 @@ Deno.serve(async (req) => {
       return json(data);
     }
     if (action === "invest_skill") {
-      // player invests points into a skill
-      const { skill_id, amount } = payload;
+      const { skill_id, amount, use_training } = payload;
       const pts = parseInt(amount);
       if (isNaN(pts) || pts < 1) return json({ error: "Invalid amount" }, 400);
       const { data: skill } = await admin.from("player_skills").select("*").eq("id", skill_id).eq("account_id", me.id).maybeSingle();
       if (!skill) return json({ error: "Skill not found" }, 404);
-      // get available points
       const state = await getPlayerInvestiture(me.id);
-      if (state.available_points < pts) return json({ error: "Not enough Investiture Points" }, 400);
-      // calc max investable for allomancy/passive
+      const isSignet = skill.skill_type === "signet";
+      const totalAvail = isSignet ? state.available_points + state.training_points : state.available_points;
+      if (totalAvail < pts) return json({ error: "Not enough Investiture Points" }, 400);
+      if (use_training && !isSignet) return json({ error: "Training points can only be used for signets" }, 400);
       if (skill.skill_type === "allomancy" || skill.skill_type === "passive") {
         const maxPts = skill.is_mastered ? 9 : 10;
         if (skill.points_invested + pts > maxPts) return json({ error: `Max ${maxPts} pts for this skill` }, 400);
       }
-      if (skill.skill_type === "signet") {
-        // signets: no hard cap here — upgrades handle their own sub-pools
-        if (skill.points_invested + pts > 999) return json({ error: "Amount too large" }, 400);
-      }
+      if (isSignet && skill.points_invested + pts > 999) return json({ error: "Amount too large" }, 400);
       if (skill.skill_type === "custom") {
-        // check against custom item max
         const { data: ci } = await admin.from("custom_investable_items").select("*").eq("id", skill.custom_item_id).maybeSingle();
         if (ci) {
           const maxCustom = (ci.tier1_cost??1)+(ci.tier2_cost??2)+(ci.tier3_cost??3)+(ci.tier4_cost??4);
           if (skill.points_invested + pts > maxCustom) return json({ error: `Max ${maxCustom} pts for this custom item` }, 400);
+        }
+      }
+      // For signets: deduct training points first if available and requested
+      if (isSignet && state.training_points > 0) {
+        const tpUsed = Math.min(pts, state.training_points);
+        if (tpUsed > 0) {
+          await admin.from("player_investiture").update({ training_points: state.training_points - tpUsed }).eq("account_id", me.id);
         }
       }
       await admin.from("player_skills").update({ points_invested: skill.points_invested + pts }).eq("id", skill_id);
@@ -222,7 +229,16 @@ Deno.serve(async (req) => {
       const { data: skill } = await admin.from("player_skills").select("*").eq("id", skill_id).eq("account_id", me.id).maybeSingle();
       if (!skill) return json({ error: "Skill not found" }, 404);
       const state = await getPlayerInvestiture(me.id);
-      if (state.available_points < pts) return json({ error: "Not enough Investiture Points" }, 400);
+      const isSignet = skill.skill_type === "signet";
+      const totalAvail = isSignet ? state.available_points + state.training_points : state.available_points;
+      if (totalAvail < pts) return json({ error: "Not enough Investiture Points" }, 400);
+      // For signets: deduct training points first
+      if (isSignet && state.training_points > 0) {
+        const tpUsed = Math.min(pts, state.training_points);
+        if (tpUsed > 0) {
+          await admin.from("player_investiture").update({ training_points: state.training_points - tpUsed }).eq("account_id", me.id);
+        }
+      }
       // upsert the upgrade row
       const { data: existing } = await admin.from("player_skill_upgrades").select("*").eq("skill_id", skill_id).eq("upgrade_key", upgrade_key).maybeSingle();
       if (existing) {
@@ -230,7 +246,6 @@ Deno.serve(async (req) => {
       } else {
         await admin.from("player_skill_upgrades").insert({ skill_id, upgrade_key, upgrade_name: upgrade_name || upgrade_key, points_invested: pts });
       }
-      // also add to skill's total
       await admin.from("player_skills").update({ points_invested: skill.points_invested + pts }).eq("id", skill_id);
       return json({ ok: true });
     }
@@ -265,6 +280,23 @@ Deno.serve(async (req) => {
     if (action === "list_custom_skills") {
       const { data } = await admin.from("custom_investable_items").select("*").order("name");
       return json({ items: data??[] });
+    }
+
+    // --- COMBAT STATE (player self-tracking) ---
+    if (action === "update_burnout") {
+      const val = parseInt(payload.value);
+      if (isNaN(val) || val < 0) return json({ error: "Invalid value" }, 400);
+      await admin.from("player_investiture").update({ burnout_current: val }).eq("account_id", me.id);
+      return json({ ok: true, burnout_current: val });
+    }
+    if (action === "update_charges") {
+      const { skill_id, value } = payload;
+      const val = parseInt(value);
+      if (isNaN(val) || val < 0) return json({ error: "Invalid value" }, 400);
+      const { data: skill } = await admin.from("player_skills").select("id").eq("id", skill_id).eq("account_id", me.id).maybeSingle();
+      if (!skill) return json({ error: "Skill not found" }, 404);
+      await admin.from("player_skills").update({ current_charges: val }).eq("id", skill_id);
+      return json({ ok: true, current_charges: val });
     }
 
     // --- DM ONLY BELOW ---
@@ -503,6 +535,54 @@ Deno.serve(async (req) => {
         });
       }
       return json({ players: result });
+    }
+    if (action === "dm_get_combat_summary") {
+      const { data: accts } = await admin.from("rep_accounts").select("id, character_name").eq("is_dm", false).order("character_name");
+      const result = [];
+      for (const acct of accts ?? []) {
+        const { data: pool } = await admin.from("player_investiture").select("burnout_current, training_points").eq("account_id", (acct as any).id).maybeSingle();
+        const { data: skills } = await admin.from("player_skills").select("id, skill_type, skill_key, skill_name, current_charges").eq("account_id", (acct as any).id);
+        const alloSkills = (skills ?? []).filter((s: any) => s.skill_type === "allomancy" && s.current_charges > 0);
+        const hasSignets = (skills ?? []).some((s: any) => s.skill_type === "signet");
+        result.push({
+          account_id: (acct as any).id,
+          character_name: (acct as any).character_name,
+          burnout_current: (pool as any)?.burnout_current ?? 0,
+          has_signets: hasSignets,
+          metal_charges: alloSkills.map((s: any) => ({ skill_id: s.id, skill_key: s.skill_key, skill_name: s.skill_name, current_charges: s.current_charges })),
+        });
+      }
+      return json({ players: result });
+    }
+    if (action === "dm_reset_combat") {
+      const { target_account_id, reset_type } = payload;
+      if (reset_type === "burnout" || reset_type === "all") {
+        if (target_account_id) {
+          await admin.from("player_investiture").update({ burnout_current: 0 }).eq("account_id", target_account_id);
+        } else {
+          await admin.from("player_investiture").update({ burnout_current: 0 }).neq("account_id", "00000000-0000-0000-0000-000000000000");
+        }
+      }
+      if (reset_type === "charges" || reset_type === "all") {
+        if (target_account_id) {
+          await admin.from("player_skills").update({ current_charges: 0 }).eq("account_id", target_account_id).eq("skill_type", "allomancy");
+        } else {
+          await admin.from("player_skills").update({ current_charges: 0 }).eq("skill_type", "allomancy");
+        }
+      }
+      return json({ ok: true });
+    }
+    if (action === "dm_add_training_points") {
+      const { target_account_id, amount, note } = payload;
+      const pts = parseInt(amount);
+      if (isNaN(pts) || pts === 0) return json({ error: "Invalid amount" }, 400);
+      const { data: pool } = await admin.from("player_investiture").select("*").eq("account_id", target_account_id).maybeSingle();
+      if (!pool) return json({ error: "Player has no investiture pool" }, 404);
+      const newTP = Math.max(0, (pool as any).training_points + pts);
+      const logEntry = { amount: pts, note: note || `Training points ${pts > 0 ? "granted" : "removed"} by DM`, created_at: new Date().toISOString(), type: "training" };
+      const log = [...((pool as any).ip_log || []), logEntry];
+      await admin.from("player_investiture").update({ training_points: newTP, ip_log: log }).eq("account_id", target_account_id);
+      return json({ ok: true, training_points: newTP });
     }
     if (action === "dm_set_level") {
       const { target_account_id, level, grant_ip } = payload;
