@@ -257,7 +257,7 @@ textarea.notes:focus{outline:none;border-color:var(--gold-dim)}
 .invest-body{padding:18px 22px 80px;display:flex;flex-direction:column;gap:24px}
 .invest-section-head{font-family:'Cinzel',serif;font-size:.95rem;color:var(--gold);font-weight:600;margin-bottom:12px;padding-bottom:5px;border-bottom:1px solid var(--edge);display:flex;align-items:center;gap:8px}
 .invest-section-head span{font-size:.66rem;color:var(--txt-faint);font-style:italic;font-family:'EB Garamond',serif;font-weight:400}
-.skill-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:10px}
+.skill-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:10px}
 .skill-card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--edge);border-radius:var(--rad);overflow:hidden;transition:border-color .18s}
 .skill-card:hover{border-color:var(--edge2)}
 .skill-card.mastered{border-color:rgba(201,162,75,.3)}
@@ -287,6 +287,33 @@ textarea.notes:focus{outline:none;border-color:var(--gold-dim)}
 .upgrade-name{font-size:.8rem;color:var(--parch);font-weight:600}
 .upgrade-desc{font-size:.73rem;color:var(--txt-dim);margin-top:2px;line-height:1.32}
 .upgrade-pts{font-family:'Cinzel',serif;font-size:.86rem;color:var(--gold);font-weight:700;white-space:nowrap;min-width:44px;text-align:right;padding-top:1px}
+.card-section{border-top:1px solid var(--edge);margin-top:6px}
+.card-section-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;padding:8px 0;cursor:pointer;background:none;border:none;color:var(--parch-dim);font-family:'Cinzel',serif;font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;transition:color .15s}
+.card-section-toggle:hover{color:var(--gold)}
+.card-section-toggle .arrow{transition:transform .2s;font-size:.7rem}
+.card-section-toggle.open .arrow{transform:rotate(180deg)}
+.card-section-body{display:none;padding:0 0 8px}
+.card-section-body.open{display:block}
+.tier-detail{padding:6px 8px;margin-bottom:4px;border-radius:3px;font-size:.75rem;line-height:1.4;border-left:3px solid var(--edge)}
+.tier-detail.unlocked{border-left-color:var(--gold);background:rgba(201,162,75,.04)}
+.tier-detail.locked{color:var(--txt-faint);opacity:.7}
+.tier-detail .tier-label-inline{font-family:'Cinzel',serif;font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:var(--gold-dim);margin-right:6px}
+.tier-detail.unlocked .tier-label-inline{color:var(--gold)}
+.passive-text{font-size:.76rem;color:var(--txt-dim);line-height:1.45;padding:4px 0}
+.core-text{font-size:.76rem;color:var(--txt-dim);line-height:1.45;padding:4px 0}
+.mastered-text{font-size:.76rem;color:var(--gold-dim);line-height:1.45;padding:4px 0;font-style:italic}
+.ability-card{background:rgba(12,11,16,.4);border:1px solid var(--edge);border-radius:var(--rad);margin-bottom:6px;overflow:hidden}
+.ability-card-head{padding:8px 10px;display:flex;align-items:center;justify-content:space-between;cursor:pointer}
+.ability-card-head:hover{background:rgba(201,162,75,.04)}
+.ability-card-name{font-family:'Cinzel',serif;font-size:.76rem;color:var(--parch);font-weight:600}
+.ability-card-cost{font-size:.65rem;color:var(--txt-faint)}
+.ability-card-body{display:none;padding:6px 10px 8px;border-top:1px solid var(--edge);font-size:.74rem;color:var(--txt-dim);line-height:1.4}
+.ability-card-body.open{display:block}
+.rank-badge{font-size:.54rem;text-transform:uppercase;letter-spacing:.08em;font-family:'Cinzel',serif;padding:1px 6px;border-radius:3px;margin-left:5px;vertical-align:middle}
+.rank-most-powerful{color:#ffd700;background:rgba(255,215,0,.12);border:1px solid rgba(255,215,0,.3)}
+.rank-extraordinary{color:#c084fc;background:rgba(192,132,252,.1);border:1px solid rgba(192,132,252,.25)}
+.rank-rare{color:#60a5fa;background:rgba(96,165,250,.1);border:1px solid rgba(96,165,250,.25)}
+.rank-standard{color:var(--txt-dim);background:rgba(107,100,120,.1);border:1px solid var(--edge)}
 .set-item-card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid rgba(74,128,196,.3);border-radius:var(--rad);padding:13px 15px}
 .set-item-head{display:flex;align-items:center;gap:9px;margin-bottom:9px}
 .set-item-slot{font-family:'Cinzel',serif;font-size:.57rem;text-transform:uppercase;letter-spacing:.13em;color:var(--blue);background:rgba(74,128,196,.12);border:1px solid rgba(74,128,196,.3);padding:2px 6px;border-radius:3px}
@@ -1329,6 +1356,10 @@ function alloTierDesc(metalKey,tier,mastered){
   const prefix=mastered&&tier===1?"<b>Mastered</b> — ":"";
   return prefix+desc;
 }
+function toggleSection(el){
+  const body=el.nextElementSibling;
+  el.classList.toggle("open");body.classList.toggle("open");
+}
 function renderAlloCard(skill){
   const m=METALS[skill.skill_key]||(skill.skill_key==="passives"?PASSIVE_METAL_CONTROL:null);
   const name=m?m.name:skill.skill_name;
@@ -1336,31 +1367,50 @@ function renderAlloCard(skill){
   const nick=m?m.nickname:"";
   const tier=calcAlloTier(skill.points_invested,skill.is_mastered);
   const maxPts=skill.is_mastered?9:10;
+  const maxTiers=m&&m.tiers?m.tiers.length:4;
   const thresholds=skill.is_mastered?ALLO_TIERS_MASTERED:ALLO_TIERS;
-  const pipsHTML=`<div class="tier-pips">${[1,2,3,4].map(t=>`<div class="tier-pip ${tier>=t?'filled'+(t===4?' t4':''):''}" title="Tier ${t} — ${thresholds[t]} pts${skill.is_mastered&&t===1?' (free with Mastered)':''}"></div>`).join("")}</div>`;
-  const desc=alloTierDesc(skill.skill_key,tier,skill.is_mastered);
+  const pipCount=Math.min(maxTiers,4);
+  const pipsHTML=`<div class="tier-pips">${Array.from({length:pipCount},(_,i)=>i+1).map(t=>`<div class="tier-pip ${tier>=t?'filled'+(t===pipCount?' t4':''):''}" title="Tier ${t} — ${thresholds[t]||'?'} pts${skill.is_mastered&&t===1?' (free with Mastered)':''}"></div>`).join("")}</div>`;
   const canInvest=skill.points_invested<maxPts&&ISTATE.available_points>0;
-  const nextCost=tier<4?thresholds[tier+1]-skill.points_invested:0;
-  const tooltip=m?`Core: ${m.core}${m.mastered?'\nMastered: '+m.mastered:''}`:skill.skill_name;
-  return `<div class="skill-card${skill.is_mastered?' mastered':''}" title="${esc(tooltip)}">
+  const nextCost=tier<maxTiers?thresholds[tier+1]-skill.points_invested:0;
+  const chargesLabel=m&&m.charges?`${m.charges} charges/gram`:"";
+  let tiersHTML="";
+  if(m&&m.tiers&&m.tiers.length){
+    tiersHTML=`<div class="card-section">
+      <button class="card-section-toggle" onclick="toggleSection(this)">Tier Details <span class="arrow">▼</span></button>
+      <div class="card-section-body">${m.tiers.map((t,i)=>`<div class="tier-detail ${tier>=i+1?'unlocked':'locked'}"><span class="tier-label-inline">${tier>=i+1?'✓':''} T${i+1}</span>${esc(t)}</div>`).join("")}</div></div>`;
+  }
+  let baseHTML="";
+  if(m&&(m.core||m.mastered)){
+    baseHTML=`<div class="card-section">
+      <button class="card-section-toggle" onclick="toggleSection(this)">Base Details <span class="arrow">▼</span></button>
+      <div class="card-section-body">${m.core?`<div class="core-text"><b>Core:</b> ${esc(m.core)}</div>`:''}${m.mastered?`<div class="mastered-text"><b>Mastered:</b> ${esc(m.mastered)}</div>`:''}</div></div>`;
+  }
+  return `<div class="skill-card${skill.is_mastered?' mastered':''}">
     <div class="skill-card-head">
       <div class="skill-icon">${icon}</div>
       <div class="skill-title">
         <div class="skill-name">${esc(name)}${skill.is_mastered?`<span class="skill-mastered-badge">Mastered</span>`:''}</div>
-        <div class="skill-sub">${esc(nick)}${m?` — ${esc(m.effect)}`:''}</div>
+        <div class="skill-sub">${esc(nick)}${chargesLabel?' — '+chargesLabel:''}</div>
       </div>
     </div>
     <div class="skill-body">
-      <div class="tier-row"><span class="tier-label">Tier</span>${pipsHTML}<span class="tier-num">${tier}/4</span></div>
-      <div class="tier-desc">${desc}</div>
+      <div class="tier-row"><span class="tier-label">Tier</span>${pipsHTML}<span class="tier-num">${tier}/${pipCount}</span></div>
       <div class="skill-footer">
         <span class="pts-info"><b>${skill.points_invested}</b>/${maxPts} pts invested</span>
-        ${canInvest&&tier<4?`<button class="invest-btn" onclick="openInvestModal('skill','${skill.id}','${esc(name)}',${nextCost})">Invest (${nextCost} pt${nextCost!==1?'s':''})</button>`
-          :tier>=4?`<span style="font-size:.68rem;color:var(--gold-dim);font-style:italic">Max tier reached</span>`
+        ${canInvest&&tier<maxTiers?`<button class="invest-btn" onclick="openInvestModal('skill','${skill.id}','${esc(name)}',${nextCost})">Invest (${nextCost} pt${nextCost!==1?'s':''})</button>`
+          :tier>=maxTiers?`<span style="font-size:.68rem;color:var(--gold-dim);font-style:italic">Max tier reached</span>`
           :`<button class="invest-btn" disabled>No IP available</button>`}
-      </div>
+      </div>${baseHTML}${tiersHTML}
     </div>
   </div>`;
+}
+function signetRankClass(rank){
+  if(!rank)return"rank-standard";
+  if(rank.includes("Most Powerful"))return"rank-most-powerful";
+  if(rank==="Extraordinary")return"rank-extraordinary";
+  if(rank==="Rare")return"rank-rare";
+  return"rank-standard";
 }
 function renderSignetCard(skill){
   const s=SIGNETS[skill.skill_key];
@@ -1370,40 +1420,53 @@ function renderSignetCard(skill){
   const upgMap={};upgrades.forEach(u=>{upgMap[u.upgrade_key]=u.points_invested;});
   const signetData=s?s.upgrades:[];
   const hasAvail=ISTATE.available_points>0;
-  let upgradeRows="";
+  const passive=s?.passive||"";
+  const rank=s?.rank||"";
+  const rankBadge=rank?`<span class="rank-badge ${signetRankClass(rank)}">${esc(rank)}</span>`:"";
+  let passiveSection="";
+  if(passive){
+    passiveSection=`<div class="card-section">
+      <button class="card-section-toggle open" onclick="toggleSection(this)">Passive <span class="arrow">▼</span></button>
+      <div class="card-section-body open"><div class="passive-text">${esc(passive)}</div></div></div>`;
+  }
+  let abilitiesSection="";
   if(signetData.length){
-    upgradeRows=signetData.map(upg=>{
+    const abilityCards=signetData.map(upg=>{
       const pts=upgMap[upg.key]||0;
-      return `<div class="upgrade-row">
-        <div class="upgrade-info">
-          <div class="upgrade-name">${esc(upg.name)}</div>
-          <div class="upgrade-desc">${esc(upg.desc)}</div>
+      const costMatch=upg.desc.match(/^\(([^)]+)\)/);
+      const costLabel=costMatch?costMatch[1]:"";
+      return `<div class="ability-card">
+        <div class="ability-card-head" onclick="this.nextElementSibling.classList.toggle('open')">
+          <span class="ability-card-name">${esc(upg.name)}</span>
+          <span style="display:flex;align-items:center;gap:8px">
+            ${costLabel?`<span class="ability-card-cost">${esc(costLabel)}</span>`:''}
+            <span class="upgrade-pts" style="font-size:.72rem;min-width:auto">${pts}pt</span>
+            ${hasAvail?`<button class="invest-btn" style="font-size:.52rem;padding:3px 7px" onclick="event.stopPropagation();openInvestModal('upgrade','${skill.id}','${esc(upg.name)}',1,'${esc(upg.key)}')">+</button>`:''}
+          </span>
         </div>
-        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0">
-          <div class="upgrade-pts">${pts} pt${pts!==1?'s':''}</div>
-          ${hasAvail?`<button class="invest-btn" onclick="openInvestModal('upgrade','${skill.id}','${esc(upg.name)}',1,'${esc(upg.key)}')">+</button>`:''}
-        </div>
+        <div class="ability-card-body">${esc(upg.desc)}</div>
       </div>`;
     }).join("");
+    abilitiesSection=`<div class="card-section">
+      <button class="card-section-toggle" onclick="toggleSection(this)">Abilities (${signetData.length}) <span class="arrow">▼</span></button>
+      <div class="card-section-body">${abilityCards}</div></div>`;
   }else{
-    upgradeRows=`<div class="upgrade-row"><div class="upgrade-info" style="color:var(--txt-faint);font-style:italic;font-size:.8rem">No predefined upgrades. Invest points to the signet pool directly.</div>
-      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
-        <div class="upgrade-pts">${skill.points_invested} pts</div>
+    abilitiesSection=`<div class="card-section">
+      <div style="padding:8px 0;color:var(--txt-faint);font-style:italic;font-size:.76rem">No predefined abilities. Invest points to the signet pool directly.</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:7px;padding-bottom:6px">
+        <span class="pts-info">${skill.points_invested} pts invested</span>
         ${hasAvail?`<button class="invest-btn" onclick="openInvestModal('skill','${skill.id}','${esc(name)}',1)">+</button>`:''}
       </div></div>`;
   }
-  const passive=s?.passive||"";
-  const rank=s?.rank?`<span style="font-size:.58rem;color:var(--gold-dim);font-style:italic;margin-left:4px">${esc(s.rank)}</span>`:"";
   return `<div class="skill-card">
     <div class="skill-card-head">
       <div class="skill-icon">${icon}</div>
       <div class="skill-title">
-        <div class="skill-name">${esc(name)}${rank}</div>
-        ${passive?`<div class="skill-sub" style="font-size:.7rem;line-height:1.3;margin-top:2px">${esc(passive.substring(0,80))}${passive.length>80?'…':''}</div>`:''}
+        <div class="skill-name">${esc(name)}${rankBadge}</div>
       </div>
     </div>
-    <div class="skill-body">${upgradeRows}
-      <div class="skill-footer" style="margin-top:10px">
+    <div class="skill-body">${passiveSection}${abilitiesSection}
+      <div class="skill-footer" style="margin-top:6px">
         <span class="pts-info">Total: <b>${skill.points_invested}</b> pts invested</span>
       </div>
     </div>
