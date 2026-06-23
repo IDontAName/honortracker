@@ -26,12 +26,17 @@ function newToken() { return btoa(String.fromCharCode(...crypto.getRandomValues(
 
 async function getMe(token: string | null) {
   if (!token) return null;
-  const { data } = await admin.from("rep_sessions")
-    .select("account_id, expires_at, rep_accounts(id, character_name, is_dm, honor_score)")
+  // Two separate queries to avoid ambiguous FK join (multiple tables reference rep_accounts)
+  const { data: sess } = await admin.from("rep_sessions")
+    .select("account_id, expires_at")
     .eq("token", token).maybeSingle();
-  if (!data) return null;
-  if (new Date((data as any).expires_at) < new Date()) return null;
-  return (data as any).rep_accounts as { id: string; character_name: string; is_dm: boolean; honor_score: number };
+  if (!sess) return null;
+  if (new Date((sess as any).expires_at) < new Date()) return null;
+  const { data: acct } = await admin.from("rep_accounts")
+    .select("id, character_name, is_dm, honor_score")
+    .eq("id", (sess as any).account_id).maybeSingle();
+  if (!acct) return null;
+  return acct as { id: string; character_name: string; is_dm: boolean; honor_score: number };
 }
 
 async function groupPeers(npcId: string): Promise<string[]> {
