@@ -511,7 +511,7 @@ html.theme-parchment{
       <span class="count" id="count"></span>
     </div>
     <div class="ht-layout">
-      <main id="htMain"><div class="spinner"></div></main>
+      <main class="ht-main" id="htMain"><div class="spinner"></div></main>
       <aside class="ht-side" id="htSide"><button class="side-close" id="sideClose">×</button><div class="side-inner" id="sideInner"></div></aside>
     </div>
     <div id="statsView">
@@ -587,8 +587,8 @@ const SET_TIERS=[0,3,9,21,45]; // Rare/VeryRare/Legendary/Artifact cumulative
 const SET_TIER_NAMES=["—","Rare","Very Rare","Legendary","Artifact"];
 const SET_TIER_COSTS=[0,3,6,12,24]; // cost of each step up
 const LEVEL_IP={1:1,2:2,3:4,4:6,5:9,6:12,7:16,8:20,9:25,10:30,11:40,12:46,13:52,14:59,15:66,16:81,17:89,18:97,19:106,20:115,21:135,22:144,23:153,24:163,25:173};
+const PASSIVE_METAL_CONTROL={name:"Passive Metal Control",key:"passives",icon:"⚡",effect:"Controls how many metals burn passively per Invested Action.",core:"Default: 2 metals burning costs 1 IA/turn. Upgrades increase this cap.",tiers:["Burn 3 metals passively with 1 Invested Action.","Burn 4 metals passively with 1 Invested Action.","Burn 5 metals passively with 1 Invested Action.","Burn 6 metals passively with 1 Invested Action."]};
 const METALS={
-  passives:{name:"Passive Metal Control",key:"passives",icon:"⚡",effect:"Controls how many metals burn passively per Invested Action.",core:"Default: 2 metals burning costs 1 IA/turn. Upgrades increase this cap.",tiers:["Burn 3 metals passively with 1 Invested Action.","Burn 4 metals passively with 1 Invested Action.","Burn 5 metals passively with 1 Invested Action.","Burn 6 metals passively with 1 Invested Action."]},
   iron:{name:"Iron",key:"iron",icon:"🔵",nickname:"Lurcher",effect:"Pull metal objects/enemies toward you. 50 charges/gram.",core:"As IA: blue lines show metal within 30ft. Second IA pulls metal 20ft toward you. Iron Sight bypasses all barriers. Deflecting Coinshot coins requires no contested check.",mastered:"Iron Jujitsu: Hurl yourself at an enemy using a metal anchor for a kick. DEX save; hit deals 50 × weight-difference force dmg.",tiers:["Burn Iron extends to spell attacks — lurch targets up to 20ft as Free Action when attacking.","Pull range 40ft. Pulled creatures trigger AoO. +10 force damage on pulls.","Iron attacks may add DEX(Acrobatics) or STR(Athletics) save; Restrained on fail until your next turn.","Fling metallic weapons 40ft and recall instantly as free action, even in the same turn."]},
   steel:{name:"Steel",key:"steel",icon:"🔶",nickname:"Coinshot",effect:"Push metal objects/enemies away. 50 charges/gram.",core:"As IA: blue lines show metal within 30ft. Second IA flings metal 20ft away. Push 10 coins in 30/15ft cone AOE; DEX save for half (3 dmg multi / 2 dmg single-target per coin).",mastered:"The 3rd Law: Push metal sheets onto enemies, flinging them 20/40/60ft and triggering AoO for all allies. Simultaneously shoot a coin spray free.",tiers:["Burn Steel extends to spell attacks — push targets 20ft as Free Action when attacking. Accelerate thrown items by 20ft for bonus damage.","Push range 40ft. Pushed creatures trigger AoO. +10 force damage on pushes.","Coin dmg ‹3,2› → ‹5,4›. Single-target coin attack option (5 coins max), each deals 10 force dmg. Nat 20 = instant kill (no LR).","Coin max 10→15. Push range 60ft."]},
   pewter:{name:"Pewter",key:"pewter",icon:"🟤",nickname:"Thug",effect:"Physical endurance and numbed senses. 20 charges/gram.",core:"Activating as IA grants a Pewter Pool [15×ISM] pseudo-HP absorbing all damage. Stopping Pewter after taking pool dmg: all absorbed dmg returns as Force (bypasses Res/Imm). Pool resets on Long Rest.",mastered:"Bolstered Dodge: Burn 1 charge for +1 AC vs a specific attack, or +1 to DEX/STR/CON saves (1 charge per +1 bonus).",tiers:["Extra critical digit. Pool: 25×ISM.","Speed +15ft. Pool: 45×ISM.","Physical attacks +ISM damage bonus. Pool: 65×ISM.","Gain Evasion while burning. Pool: 100×ISM."]},
@@ -605,7 +605,7 @@ const METALS={
   electrum:{name:"Electrum",key:"electrum",icon:"🌟",nickname:"Oracle",effect:"Temporal metal — reveals your near-future self, what you are about to do.",core:"Shows a glimpse of the next few seconds of YOUR future choices only. Unlike Atium, only shows your own actions. Counters Atium users — they see your 'real' future, not false echoes.",mastered:"Extended Electrum foresight — can see the future of one other creature touching you.",tiers:["Electrum vision window extends further into your personal future.","See the futures of one other creature touching you.","Lock in a future choice seen in Electrum, gaining advantage on that specific action.","See ~1 minute ahead for yourself. Atium users gain no benefit against you."]},
   cadmium:{name:"Cadmium",key:"cadmium",icon:"🔵",nickname:"Pulser",effect:"Temporal metal — creates a time-slowing bubble around you.",core:"Burn Cadmium to create a Slowed bubble. Creatures inside are pulled out of combat for X turns relative to outside. Attackers entering the bubble become slowed. See wiki for full bubble rules.",mastered:"Enhanced Cadmium bubble — improved radius and selective exclusion.",tiers:["Bubble radius increases. Creatures inside are slowed for longer.","Selectively exclude certain creatures from the slowness effect.","Slowed bubble can be aimed as a cone rather than a sphere.","Maximum slow size. Extreme time dilation — creatures absent for many turns."]},
   bendalloy:{name:"Bendalloy",key:"bendalloy",icon:"🟢",nickname:"Slider",effect:"Temporal metal — creates a time-accelerating bubble around you.",core:"Burn Bendalloy to create a Speed bubble. Everyone inside moves faster than outside; extra turns before bubble collapses. Combatants reroll initiative when bubble forms. See wiki for full rules.",mastered:"Enhanced Bendalloy bubble — longer duration and selective inclusion.",tiers:["Speed bubble lasts longer. Participants gain an additional partial turn.","Selectively include/exclude creatures from your speed bubble.","Speed bubble sustained longer before charges run out.","Maximum speed bubble. Participants gain multiple full turns before collapse."]},
-  atium:{name:"Atium",key:"atium",icon:"💎",nickname:"Atium Savant",effect:"God Metal — reveals shadowy echoes of all near-future actions.",core:"While burning: see translucent echoes of every creature's actions 1–2 seconds ahead. Cannot be surprised or flanked. Attack rolls against you auto-miss unless attacker also burns Atium or Electrum. Charges are extremely rare and precious.",mastered:"Enhanced Atium — extended vision window and offensive applications.",tiers:["Echo window extends. Can use Atium echoes for advantage on attack rolls as well as defense.","Detection range 60ft. Brief glimpses of non-combat intentions.","Echoes include incoming magical/Allomantic actions — see spells before they're cast.","See ~3 seconds ahead. Impose disadvantage on all attacks against you. Other Atium/Electrum users see through this."]},
+  atium:{name:"Atium",key:"atium",icon:"💎",nickname:"Seer",effect:"God Metal — reveals shadowy echoes of all near-future actions.",core:"While burning: see translucent echoes of every creature's actions 1–2 seconds ahead. Cannot be surprised or flanked. Attack rolls against you auto-miss unless attacker also burns Atium or Electrum. Charges are extremely rare and precious.",mastered:"Enhanced Atium — extended vision window and offensive applications.",tiers:["Echo window extends. Can use Atium echoes for advantage on attack rolls as well as defense.","Detection range 60ft. Brief glimpses of non-combat intentions.","Echoes include incoming magical/Allomantic actions — see spells before they're cast.","See ~3 seconds ahead. Impose disadvantage on all attacks against you. Other Atium/Electrum users see through this."]},
 };
 const SIGNETS={
   precognition_true:{name:"Precognition (True)",key:"precognition_true",icon:"🟢",rank:"#4 Most Powerful",passive:"Master of the Future: Always under Foresight. Cannot be surprised, flanked, or have disadvantage on d20 while Grounded; others can't have advantage. ISM times/round: impose reroll on any d20 (Free Action). Extra reactions = ISM.",upgrades:[{key:"a1",name:"A1 — I Saw It Coming",desc:"(1 IA, 3 Burnout) Peer into near future. Gain 2 Evasion stacks (combat) or 1 (out of combat). Each stack: completely avoid an instance of damage OR an attack."},{key:"a2",name:"A2 — Precognitive Strike",desc:"Further Precognition ability (see wiki for full details)."},{key:"burnout_cap",name:"Burnout Cap Investment",desc:"Invest points to raise your effective Burnout threshold before entering risk/high burnout states."}]},
@@ -627,6 +627,41 @@ const SIGNETS={
   arcana_immunity_minor:{name:"Arcana Immunity (Minor)",key:"arcana_immunity_minor",icon:"✴",passive:"Partial resistance to arcane magic while Grounded.",upgrades:[{key:"a1",name:"A1 — Spell Shield",desc:"Advantage on saving throws against spells and magical effects."},{key:"a2",name:"A2 — Spell Absorption",desc:"Once per long rest, absorb a spell of 5th level or lower; take no damage, regain HP = level×ISM."}]},
   sound_seeking:{name:"Sound Seeking",key:"sound_seeking",icon:"👂",passive:"Heightened hearing sensitivity while Grounded.",upgrades:[{key:"a1",name:"A1 — Echo Sense",desc:"Pinpoint invisible or hidden creatures within 60ft using sound. Blindsight 30ft vs. targets that make noise."},{key:"a2",name:"A2 — Resonance",desc:"Send a sound pulse to reveal the layout of a room or area up to 120ft radius."}]},
   truthsayer:{name:"Truthsayer",key:"truthsayer",icon:"⚖",passive:"Involuntary detection of falsehoods while Grounded.",upgrades:[{key:"a1",name:"A1 — Truth Sense",desc:"Detect lies automatically. Creatures within 30ft cannot knowingly speak false statements without your awareness."},{key:"a2",name:"A2 — Compulsion",desc:"Compel a creature to answer questions truthfully. WIS save; failure means they cannot lie for the duration."}]},
+  air:{name:"Air",key:"air",icon:"🌬",passive:"Subtle air currents respond to your will while Grounded.",upgrades:[]},
+  amber:{name:"Amber",key:"amber",icon:"🟡",passive:"Amber-aspected signet ability.",upgrades:[]},
+  arborist:{name:"Arborist",key:"arborist",icon:"🌳",passive:"Connection to plant life and growth while Grounded.",upgrades:[]},
+  astral_projection:{name:"Astral Projection",key:"astral_projection",icon:"👻",passive:"Awareness extends beyond the physical body while Grounded.",upgrades:[]},
+  bind:{name:"Bind",key:"bind",icon:"🔗",passive:"Ability to create bindings and restraints while Grounded.",upgrades:[]},
+  blocking:{name:"Blocking",key:"blocking",icon:"🚫",passive:"Ability to block or negate incoming effects while Grounded.",upgrades:[]},
+  chronologist:{name:"Chronologist",key:"chronologist",icon:"⏳",passive:"Temporal awareness and manipulation while Grounded.",upgrades:[]},
+  countering_arcana:{name:"Countering Arcana (Minor)",key:"countering_arcana",icon:"🔮",passive:"Ability to counter minor arcane effects while Grounded.",upgrades:[]},
+  countering_signets:{name:"Countering Signets",key:"countering_signets",icon:"⛔",passive:"Ability to suppress or counter other signets while Grounded.",upgrades:[]},
+  earth:{name:"Earth",key:"earth",icon:"🪨",passive:"Connection to stone and earth while Grounded.",upgrades:[]},
+  farsight:{name:"Farsight",key:"farsight",icon:"👁",passive:"Enhanced long-range vision while Grounded.",upgrades:[]},
+  fire:{name:"Fire",key:"fire",icon:"🔥",passive:"Pyrokinetic ability while Grounded.",upgrades:[]},
+  hemalic:{name:"Hemalic",key:"hemalic",icon:"🩸",passive:"Blood-aspected signet ability while Grounded.",upgrades:[]},
+  ice:{name:"Ice",key:"ice",icon:"❄",passive:"Cryokinetic ability while Grounded.",upgrades:[]},
+  invulnerability:{name:"Invulnerability",key:"invulnerability",icon:"💪",passive:"Enhanced durability while Grounded.",upgrades:[]},
+  metallurgist:{name:"Metallurgist",key:"metallurgist",icon:"⚒",passive:"Control over metal and metallic objects while Grounded.",upgrades:[]},
+  nightwraith:{name:"Nightwraith",key:"nightwraith",icon:"🦇",passive:"Enhanced abilities in darkness while Grounded.",upgrades:[]},
+  precognition:{name:"Precognition",key:"precognition",icon:"🔮",passive:"Glimpses of the near future while Grounded.",upgrades:[]},
+  retrocognition:{name:"Retrocognition",key:"retrocognition",icon:"⏪",passive:"Ability to perceive past events while Grounded.",upgrades:[]},
+  reversal:{name:"Reversal",key:"reversal",icon:"🔄",passive:"Ability to reverse effects or actions while Grounded.",upgrades:[]},
+  rifting:{name:"Rifting",key:"rifting",icon:"🌀",passive:"Ability to create spatial rifts while Grounded.",upgrades:[]},
+  silencing:{name:"Silencing",key:"silencing",icon:"🤫",passive:"Ability to suppress sound or abilities while Grounded.",upgrades:[]},
+  size_change:{name:"Size Change",key:"size_change",icon:"↕",passive:"Ability to alter physical size while Grounded.",upgrades:[]},
+  sonic:{name:"Sonic",key:"sonic",icon:"🔊",passive:"Sound-based abilities while Grounded.",upgrades:[]},
+  tongues:{name:"Tongues",key:"tongues",icon:"🗣",passive:"Understanding and speaking all languages while Grounded.",upgrades:[]},
+  toxicology:{name:"Toxicology",key:"toxicology",icon:"☠",passive:"Mastery of poisons and toxins while Grounded.",upgrades:[]},
+  true_invisibility:{name:"True Invisibility",key:"true_invisibility",icon:"👤",passive:"Complete invisibility while Grounded.",upgrades:[]},
+  true_siphon:{name:"True Siphon",key:"true_siphon",icon:"🔻",passive:"Enhanced life-force siphoning while Grounded.",upgrades:[]},
+  wall_running:{name:"Wall Running",key:"wall_running",icon:"🏃",passive:"Ability to traverse vertical surfaces while Grounded.",upgrades:[]},
+  ward_attunement:{name:"Ward Attunement",key:"ward_attunement",icon:"🛡",passive:"Connection to wards and defensive sigils while Grounded.",upgrades:[]},
+  ward_extending:{name:"Ward Extending",key:"ward_extending",icon:"📐",passive:"Ability to extend ward range and coverage while Grounded.",upgrades:[]},
+  ward_unweaving:{name:"Ward Unweaving",key:"ward_unweaving",icon:"✂",passive:"Ability to unravel and dispel wards while Grounded.",upgrades:[]},
+  water:{name:"Water",key:"water",icon:"🌊",passive:"Hydrokinetic ability while Grounded.",upgrades:[]},
+  water_breathing:{name:"Water Breathing",key:"water_breathing",icon:"🫧",passive:"Ability to breathe underwater while Grounded.",upgrades:[]},
+  weakness_detection:{name:"Weakness Detection",key:"weakness_detection",icon:"🎯",passive:"Ability to perceive vulnerabilities while Grounded.",upgrades:[]},
 };
 let TOKEN=localStorage.getItem(TKEY)||null;
 let ME={name:null,is_dm:false,honor_score:0};
@@ -1130,14 +1165,14 @@ function calcAlloTier(pts,mastered){
   return tier;
 }
 function alloTierDesc(metalKey,tier,mastered){
-  const m=METALS[metalKey];if(!m)return"";
+  const m=METALS[metalKey]||(metalKey==="passives"?PASSIVE_METAL_CONTROL:null);if(!m)return"";
   if(tier===0)return mastered?"<b>Mastered</b> — Tier I granted free. Core Trait active.":"Core Trait active. Invest 1 pt for Tier I.";
   const desc=m.tiers[tier-1]||"";
   const prefix=mastered&&tier===1?"<b>Mastered</b> — ":"";
   return prefix+desc;
 }
 function renderAlloCard(skill){
-  const m=METALS[skill.skill_key];
+  const m=METALS[skill.skill_key]||(skill.skill_key==="passives"?PASSIVE_METAL_CONTROL:null);
   const name=m?m.name:skill.skill_name;
   const icon=m?m.icon:"⚗";
   const nick=m?m.nickname:"";
@@ -1450,7 +1485,7 @@ async function loadPlayerDetail(pid,el){
       }
     }).join("");
     // Metal selector
-    const metalOpts=Object.entries(METALS).map(([k,m])=>`<option value="${k}">${m.name} (${m.nickname||''})</option>`).join("");
+    const metalOpts=Object.entries(METALS).map(([k,m])=>`<option value="${k}">${m.name}${m.nickname?' ('+m.nickname+')':''}</option>`).join("");
     const signetOpts=Object.entries(SIGNETS).map(([k,s])=>`<option value="${k}">${s.name}</option>`).join("");
     const customOpts=customItems.map(ci=>`<option value="${ci.id}">${esc(ci.name)}</option>`).join("");
     el.innerHTML=`
@@ -1548,8 +1583,8 @@ async function dmGrantSkill(pid,type){
       const sel=document.getElementById(`pgrant_allo_${pid}`);
       if(!sel.value){toast("Select a metal");return;}
       const m=METALS[sel.value];
-      const stype=sel.value==="passives"?"passive":"allomancy";
-      await api("dm_grant_skill",{target_account_id:pid,skill_type:stype,skill_key:sel.value,skill_name:m?m.name:sel.value});
+      await api("dm_grant_skill",{target_account_id:pid,skill_type:"allomancy",skill_key:sel.value,skill_name:m?m.name:sel.value});
+      try{await api("dm_grant_skill",{target_account_id:pid,skill_type:"passive",skill_key:"passives",skill_name:"Passive Metal Control"});}catch(_){}
       toast(`${m?m.name:sel.value} granted`);
     }else if(type==="sig"){
       const sel=document.getElementById(`pgrant_sig_${pid}`);
