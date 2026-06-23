@@ -314,6 +314,39 @@ textarea.notes:focus{outline:none;border-color:var(--gold-dim)}
 .rank-extraordinary{color:#c084fc;background:rgba(192,132,252,.1);border:1px solid rgba(192,132,252,.25)}
 .rank-rare{color:#60a5fa;background:rgba(96,165,250,.1);border:1px solid rgba(96,165,250,.25)}
 .rank-standard{color:var(--txt-dim);background:rgba(107,100,120,.1);border:1px solid var(--edge)}
+.ip-card.training .ip-num{color:#c084fc}
+.burnout-bar-wrap{max-width:340px}
+.burnout-label{font-size:.78rem;color:var(--txt-dim);margin-bottom:4px}
+.burnout-label b{font-family:'Cinzel',serif;color:var(--parch);font-size:.9rem}
+.burnout-bar{position:relative;height:10px;background:var(--ink);border:1px solid var(--edge);border-radius:6px;overflow:visible;margin-bottom:6px}
+.burnout-fill{position:absolute;left:0;top:0;bottom:0;border-radius:6px 0 0 6px;transition:width .3s,background .3s}
+.burnout-mark{position:absolute;top:-2px;bottom:-2px;width:2px;z-index:2}
+.burnout-mark.risk{background:var(--gold)}
+.burnout-mark.high{background:var(--blood-bright)}
+.burnout-mark.complete{background:#fff}
+.burnout-controls{display:flex;gap:4px;flex-wrap:wrap}
+.burnout-status-risk{color:var(--gold);font-size:.7rem;margin-left:6px}
+.burnout-status-high{color:var(--blood-bright);font-size:.7rem;margin-left:6px}
+.burnout-status-complete{color:#fff;font-size:.7rem;margin-left:6px;font-weight:700}
+.charges-row{display:flex;align-items:center;gap:6px;margin-top:6px;padding-top:6px;border-top:1px dotted var(--edge)}
+.charges-label{font-size:.66rem;color:var(--txt-faint);font-family:'Cinzel',serif;text-transform:uppercase;letter-spacing:.08em}
+.charges-ctrl{display:flex;align-items:center;gap:0}
+.charges-ctrl button{width:22px;height:22px;background:var(--ink);border:1px solid var(--edge2);color:var(--txt-dim);font-size:.72rem;cursor:pointer;transition:.12s}
+.charges-ctrl button:first-child{border-radius:3px 0 0 3px}
+.charges-ctrl button:last-child{border-radius:0 3px 3px 0}
+.charges-ctrl button:hover{background:var(--gold);color:#1a1510;border-color:var(--gold)}
+.charges-ctrl .charges-val{width:40px;height:22px;text-align:center;background:var(--ink2);border-top:1px solid var(--edge2);border-bottom:1px solid var(--edge2);font-family:'Cinzel',serif;font-size:.72rem;color:var(--parch);display:flex;align-items:center;justify-content:center}
+.charges-max{font-size:.62rem;color:var(--txt-faint);margin-left:2px}
+.combat-summary{display:grid;gap:12px}
+.combat-player-card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--edge);border-radius:var(--rad);padding:14px 16px}
+.combat-player-name{font-family:'Cinzel',serif;font-size:.9rem;color:var(--parch);font-weight:600;margin-bottom:8px}
+.combat-row{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:.8rem}
+.combat-row .lbl{color:var(--gold-dim);font-family:'Cinzel',serif;font-size:.6rem;text-transform:uppercase;letter-spacing:.1em;min-width:70px}
+.combat-row .val{color:var(--parch);font-family:'Cinzel',serif;font-weight:600}
+.combat-metal-row{display:flex;align-items:center;gap:6px;padding:3px 0;font-size:.78rem}
+.combat-metal-row .metal-name{color:var(--txt-dim);min-width:80px}
+.combat-metal-row .metal-charges{color:var(--gold);font-family:'Cinzel',serif;font-weight:600}
+.combat-reset-bar{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
 .set-item-card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid rgba(74,128,196,.3);border-radius:var(--rad);padding:13px 15px}
 .set-item-head{display:flex;align-items:center;gap:9px;margin-bottom:9px}
 .set-item-slot{font-family:'Cinzel',serif;font-size:.57rem;text-transform:uppercase;letter-spacing:.13em;color:var(--blue);background:rgba(74,128,196,.12);border:1px solid rgba(74,128,196,.3);padding:2px 6px;border-radius:3px}
@@ -555,9 +588,23 @@ html.theme-parchment{
         <div class="ip-card avail"><div class="ip-num" id="ipAvail">—</div><div class="ip-lbl">Available IP</div></div>
         <div class="ip-card"><div class="ip-num" id="ipTotal">—</div><div class="ip-lbl">Total Earned</div></div>
         <div class="ip-card spent"><div class="ip-num" id="ipSpent">—</div><div class="ip-lbl">Invested</div></div>
+        <div class="ip-card training" id="ipTrainingCard" style="display:none"><div class="ip-num" id="ipTraining">0</div><div class="ip-lbl">Training Pts</div></div>
       </div>
       <div style="flex:1;min-width:200px">
         <div class="ip-level">Level: <b id="ipLevel">—</b></div>
+        <div id="burnoutDisplay" style="display:none;margin-top:8px">
+          <div class="burnout-bar-wrap">
+            <div class="burnout-label">Burnout: <b id="burnoutVal">0</b><span id="burnoutStatus"></span></div>
+            <div class="burnout-bar"><div class="burnout-fill" id="burnoutFill"></div><div class="burnout-mark risk" style="left:66.7%"></div><div class="burnout-mark high" style="left:86.7%"></div><div class="burnout-mark complete" style="left:100%"></div></div>
+            <div class="burnout-controls">
+              <button class="mini-btn" onclick="adjustBurnout(-1)">-1</button>
+              <button class="mini-btn" onclick="adjustBurnout(-5)">-5</button>
+              <button class="mini-btn" onclick="adjustBurnout(5)">+5</button>
+              <button class="mini-btn" onclick="adjustBurnout(1)">+1</button>
+              <button class="mini-btn" onclick="setBurnoutManual()">Set</button>
+            </div>
+          </div>
+        </div>
         <div style="color:var(--txt-faint);font-size:.78rem;margin-top:5px;font-style:italic;line-height:1.4">Points lock when invested.<br>Only the DM can refund or reassign them.</div>
         <button class="mini-btn" style="margin-top:8px" onclick="showIpLog()">View IP Log</button>
       </div>
@@ -579,6 +626,7 @@ html.theme-parchment{
       <nav class="dm-sidebar" id="dmSidebar">
         <div class="dm-sidebar-head">Investiture</div>
         <button class="dm-nav-btn active" data-dm="players">Players</button>
+        <button class="dm-nav-btn" data-dm="combat">Combat</button>
         <button class="dm-nav-btn" data-dm="custom">Custom Items</button>
         <div class="dm-divider"></div>
         <div class="dm-sidebar-head">Messaging</div>
@@ -1318,6 +1366,12 @@ function renderInvestiture(){
   document.getElementById("ipTotal").textContent=ISTATE.total_points;
   document.getElementById("ipSpent").textContent=ISTATE.spent_points;
   document.getElementById("ipLevel").textContent=ISTATE.pool?.level??1;
+  const tp=ISTATE.training_points||0;
+  const tpCard=document.getElementById("ipTrainingCard");
+  if(tp>0){tpCard.style.display="";document.getElementById("ipTraining").textContent=tp;}else{tpCard.style.display="none";}
+  const hasSignets=(ISTATE.skills||[]).some(s=>s.skill_type==="signet");
+  const burnoutEl=document.getElementById("burnoutDisplay");
+  if(hasSignets){burnoutEl.style.display="";updateBurnoutUI(ISTATE.burnout_current||0);}else{burnoutEl.style.display="none";}
   const body=document.getElementById("investBody");
   const skills=ISTATE.skills||[];
   const setItems=ISTATE.set_items||[];
@@ -1401,7 +1455,7 @@ function renderAlloCard(skill){
         ${canInvest&&tier<maxTiers?`<button class="invest-btn" onclick="openInvestModal('skill','${skill.id}','${esc(name)}',${nextCost})">Invest (${nextCost} pt${nextCost!==1?'s':''})</button>`
           :tier>=maxTiers?`<span style="font-size:.68rem;color:var(--gold-dim);font-style:italic">Max tier reached</span>`
           :`<button class="invest-btn" disabled>No IP available</button>`}
-      </div>${baseHTML}${tiersHTML}
+      </div>${m&&m.charges?`<div class="charges-row"><span class="charges-label">Charges</span><div class="charges-ctrl"><button onclick="adjustCharges('${skill.id}',-1,${m.charges})">-</button><div class="charges-val" id="charges_${skill.id}">${skill.current_charges||0}</div><button onclick="adjustCharges('${skill.id}',1,${m.charges})">+</button></div><span class="charges-max">/ ${m.charges}</span><button class="mini-btn" style="font-size:.5rem;padding:2px 6px;margin-left:auto" onclick="setChargesManual('${skill.id}',${m.charges})">Set</button></div>`:''}${baseHTML}${tiersHTML}
     </div>
   </div>`;
 }
@@ -1534,12 +1588,18 @@ function openInvestModal(type,id,name,suggestedAmt,upgradeKey,upgradeName){
   _investCtx={type,id,name,upgradeKey,upgradeName};
   const mb=document.getElementById("modalBg"),m=document.getElementById("modal");
   const avail=ISTATE?.available_points??0;
+  const tp=ISTATE?.training_points??0;
+  const skill=(ISTATE.skills||[]).find(s=>s.id===id);
+  const isSignet=skill&&skill.skill_type==="signet";
+  const totalAvail=isSignet?avail+tp:avail;
+  const tpNote=isSignet&&tp>0?`<div style="margin-bottom:8px;color:#c084fc;font-size:.82rem">Training Points: <b>${tp}</b> (auto-deducted first for signets)</div>`:"";
   m.innerHTML=`<h3>Invest Points</h3>
     <div class="msub">Allocating into: <b>${esc(name)}</b></div>
     <div style="margin-bottom:10px;color:var(--txt-dim);font-size:.88rem">Available Investiture Points: <b style="color:var(--pos-bright);font-family:'Cinzel',serif">${avail}</b></div>
+    ${tpNote}
     <div style="display:flex;align-items:center;gap:10px;margin:12px 0">
       <label style="font-size:.66rem;text-transform:uppercase;letter-spacing:.12em;color:var(--gold-dim);font-family:'Cinzel',serif">Points to invest:</label>
-      <input type="number" id="imAmt" min="1" max="${avail}" value="${Math.min(suggestedAmt||1,avail)}" style="width:72px;padding:8px;background:var(--ink);border:1px solid var(--edge);border-radius:var(--rad);color:var(--txt);font-size:1rem;text-align:center;font-family:'Cinzel',serif"/>
+      <input type="number" id="imAmt" min="1" max="${totalAvail}" value="${Math.min(suggestedAmt||1,totalAvail)}" style="width:72px;padding:8px;background:var(--ink);border:1px solid var(--edge);border-radius:var(--rad);color:var(--txt);font-size:1rem;text-align:center;font-family:'Cinzel',serif"/>
     </div>
     <div id="imNote" style="font-size:.8rem;color:var(--txt-dim);font-style:italic;margin-bottom:6px">Points are permanently locked in this skill. Only the DM can refund them.</div>
     <div class="modal-actions">
@@ -1577,6 +1637,44 @@ async function showIpLog(){
     <div class="modal-actions"><button class="mini-btn go" onclick="document.getElementById('modalBg').classList.remove('open')">Close</button></div>`;
   mb.classList.add("open");
 }
+function updateBurnoutUI(val){
+  document.getElementById("burnoutVal").textContent=val;
+  const pct=Math.min(val/75*100,100);
+  const fill=document.getElementById("burnoutFill");
+  fill.style.width=pct+"%";
+  fill.style.background=val>=75?"#fff":val>=65?"var(--blood-bright)":val>=50?"var(--gold)":"var(--pos)";
+  const status=document.getElementById("burnoutStatus");
+  if(val>=75){status.innerHTML='<span class="burnout-status-complete"> COMPLETE</span>';}
+  else if(val>=65){status.innerHTML='<span class="burnout-status-high"> HIGH RISK</span>';}
+  else if(val>=50){status.innerHTML='<span class="burnout-status-risk"> AT RISK</span>';}
+  else{status.innerHTML="";}
+}
+async function adjustBurnout(delta){
+  const cur=ISTATE.burnout_current||0;
+  const nv=Math.max(0,cur+delta);
+  try{await api("update_burnout",{value:nv});ISTATE.burnout_current=nv;updateBurnoutUI(nv);toast("Burnout: "+nv);}catch(e){toast("Error: "+e.message);}
+}
+async function setBurnoutManual(){
+  const val=prompt("Set burnout to:",ISTATE.burnout_current||0);
+  if(val===null)return;
+  const nv=Math.max(0,parseInt(val)||0);
+  try{await api("update_burnout",{value:nv});ISTATE.burnout_current=nv;updateBurnoutUI(nv);toast("Burnout set to "+nv);}catch(e){toast("Error: "+e.message);}
+}
+async function adjustCharges(skillId,delta,maxCharges){
+  const skill=(ISTATE.skills||[]).find(s=>s.id===skillId);if(!skill)return;
+  const cur=skill.current_charges||0;
+  const nv=Math.max(0,Math.min(cur+delta,maxCharges));
+  try{await api("update_charges",{skill_id:skillId,value:nv});skill.current_charges=nv;
+    const valEl=document.getElementById("charges_"+skillId);if(valEl)valEl.textContent=nv;toast("Charges: "+nv);}catch(e){toast("Error: "+e.message);}
+}
+async function setChargesManual(skillId,maxCharges){
+  const skill=(ISTATE.skills||[]).find(s=>s.id===skillId);if(!skill)return;
+  const val=prompt("Set charges to:",skill.current_charges||0);
+  if(val===null)return;
+  const nv=Math.max(0,Math.min(parseInt(val)||0,maxCharges));
+  try{await api("update_charges",{skill_id:skillId,value:nv});skill.current_charges=nv;
+    const valEl=document.getElementById("charges_"+skillId);if(valEl)valEl.textContent=nv;toast("Charges set to "+nv);}catch(e){toast("Error: "+e.message);}
+}
 async function loadInboxBadge(){
   try{const{messages}=await api("get_inbox");
     const unread=messages.filter(m=>!m.is_read).length;
@@ -1613,6 +1711,7 @@ async function markRead(msgId){
 async function loadDmSub(sub){
   const c=document.getElementById("dmContent");
   if(sub==="players")await renderDmPlayers(c);
+  else if(sub==="combat")await renderDmCombat(c);
   else if(sub==="custom")await renderDmCustomItems(c);
   else if(sub==="compose")renderDmCompose(c);
   else if(sub==="sentbox")await renderDmSentbox(c);
@@ -1624,6 +1723,79 @@ async function loadDmSub(sub){
   else if(sub==="export"){c.innerHTML='<h2>Export Backup</h2><p style="color:var(--txt-dim);margin-bottom:14px">Download a full JSON backup of all NPC data.</p><button class="mini-btn go" onclick="doExport()">Download Backup</button>';}
 }
 
+// --- DM: COMBAT SUMMARY ---
+async function renderDmCombat(c){
+  c.innerHTML='<h2>Combat Summary</h2><div class="spinner"></div>';
+  try{
+    const{players}=await api("dm_get_combat_summary");
+    let html=`<h2>Combat Summary</h2>
+      <p style="color:var(--txt-faint);font-size:.82rem;margin-bottom:10px;font-style:italic">At-a-glance view of all players' burnout and metal charges during combat.</p>
+      <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap">
+        <button class="mini-btn danger" onclick="dmResetCombat(null,'burnout')">Reset All Burnout</button>
+        <button class="mini-btn danger" onclick="dmResetCombat(null,'charges')">Reset All Charges</button>
+        <button class="mini-btn danger" onclick="dmResetCombat(null,'all')">Reset Everything</button>
+        <button class="mini-btn" onclick="loadDmSub('combat')">Refresh</button>
+      </div>
+      <div class="combat-summary">`;
+    for(const p of players){
+      const burnout=p.burnout_current||0;
+      const burnoutPct=Math.min(burnout/75*100,100);
+      const burnoutColor=burnout>=75?"#fff":burnout>=65?"var(--blood-bright)":burnout>=50?"var(--gold)":"var(--pos)";
+      const burnoutLabel=burnout>=75?"COMPLETE":burnout>=65?"HIGH RISK":burnout>=50?"AT RISK":"OK";
+      let chargesHTML="";
+      if(p.metal_charges&&p.metal_charges.length){
+        chargesHTML=p.metal_charges.map(mc=>{
+          const m=METALS[mc.skill_key];
+          return `<div class="combat-metal-row"><span class="metal-name">${m?m.icon+" ":""}${esc(mc.skill_name)}</span><span class="metal-charges">${mc.current_charges}</span></div>`;
+        }).join("");
+      }
+      html+=`<div class="combat-player-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px">
+          <div class="combat-player-name">${esc(p.character_name)}</div>
+          <div style="display:flex;gap:4px">
+            <button class="mini-btn" style="font-size:.5rem;padding:3px 7px" onclick="dmResetCombat('${p.account_id}','burnout')">Reset Burnout</button>
+            <button class="mini-btn" style="font-size:.5rem;padding:3px 7px" onclick="dmResetCombat('${p.account_id}','charges')">Reset Charges</button>
+          </div>
+        </div>
+        <div class="combat-row"><span class="lbl">Burnout</span><span class="val" style="color:${burnoutColor}">${burnout}</span><span style="font-size:.68rem;color:${burnoutColor};margin-left:4px">${burnoutLabel}</span></div>
+        <div style="height:6px;background:var(--ink);border:1px solid var(--edge);border-radius:4px;margin:4px 0 8px;overflow:hidden"><div style="height:100%;width:${burnoutPct}%;background:${burnoutColor};border-radius:4px;transition:width .3s"></div></div>
+        ${p.has_signets?"":'<div style="font-size:.7rem;color:var(--txt-faint);font-style:italic">No signets</div>'}
+        ${chargesHTML?`<div style="margin-top:4px"><div style="font-size:.6rem;color:var(--gold-dim);font-family:Cinzel,serif;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px">Metal Charges</div>${chargesHTML}</div>`:''}
+      </div>`;
+    }
+    html+=`</div>
+      <div style="margin-top:20px;border-top:1px solid var(--edge);padding-top:16px">
+        <h3 style="font-size:.9rem;color:var(--gold);margin-bottom:10px">Grant Training Points</h3>
+        <p style="color:var(--txt-faint);font-size:.78rem;margin-bottom:10px;font-style:italic">Training points can only be spent on signets.</p>
+        <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+          <div class="lfield" style="margin:0"><label>Player</label><select id="tpPlayer" style="padding:8px;background:var(--ink);border:1px solid var(--edge);border-radius:var(--rad);color:var(--txt);font-size:.86rem">${players.map(p=>`<option value="${p.account_id}">${esc(p.character_name)}</option>`).join("")}</select></div>
+          <div class="lfield" style="margin:0"><label>Amount</label><input type="number" id="tpAmount" value="1" min="1" style="width:70px;padding:8px;background:var(--ink);border:1px solid var(--edge);border-radius:var(--rad);color:var(--txt);font-size:.86rem;text-align:center"/></div>
+          <div class="lfield" style="margin:0"><label>Note</label><input type="text" id="tpNote" placeholder="Optional note" style="width:180px;padding:8px;background:var(--ink);border:1px solid var(--edge);border-radius:var(--rad);color:var(--txt);font-size:.86rem"/></div>
+          <button class="mini-btn go" onclick="dmGrantTrainingPoints()">Grant</button>
+        </div>
+      </div>`;
+    c.innerHTML=html;
+  }catch(e){c.innerHTML=`<h2>Combat Summary</h2><div class="empty" style="color:var(--blood-bright)">${esc(e.message)}</div>`;}
+}
+async function dmResetCombat(accountId,resetType){
+  const label=accountId?"this player's":"ALL players'";
+  const what=resetType==="all"?"burnout and charges":resetType;
+  if(!confirm(`Reset ${label} ${what}?`))return;
+  try{
+    await api("dm_reset_combat",{target_account_id:accountId||undefined,reset_type:resetType});
+    toast("Reset complete");loadDmSub("combat");
+  }catch(e){toast("Error: "+e.message);}
+}
+async function dmGrantTrainingPoints(){
+  const pid=document.getElementById("tpPlayer").value;
+  const amt=parseInt(document.getElementById("tpAmount").value);
+  const note=document.getElementById("tpNote").value;
+  if(!pid||isNaN(amt)||amt<1){toast("Invalid input");return;}
+  try{
+    const r=await api("dm_add_training_points",{target_account_id:pid,amount:amt,note});
+    toast(`Granted ${amt} training point${amt!==1?"s":""}. New total: ${r.training_points}`);
+  }catch(e){toast("Error: "+e.message);}
+}
 // --- DM: PLAYERS TAB ---
 async function renderDmPlayers(c){
   c.innerHTML='<h2>Player Management</h2><div class="spinner"></div>';
