@@ -262,6 +262,11 @@ Deno.serve(async (req) => {
       return json({ ok: true });
     }
 
+    if (action === "list_custom_skills") {
+      const { data } = await admin.from("custom_investable_items").select("*").order("name");
+      return json({ items: data??[] });
+    }
+
     // --- DM ONLY BELOW ---
     if (action === "preview_as_player") {
       if (!me.is_dm) return json({ error: "DM only" }, 403);
@@ -694,11 +699,6 @@ Deno.serve(async (req) => {
       await admin.from("custom_investable_items").delete().eq("id", payload.id);
       return json({ ok: true });
     }
-    if (action === "list_custom_skills") {
-      const { data } = await admin.from("custom_investable_items").select("*").order("name");
-      return json({ items: data??[] });
-    }
-
     return json({ error: "Unknown action: "+action }, 400);
   } catch(e) {
     return json({ error: String(e) }, 500);
