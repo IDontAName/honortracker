@@ -462,11 +462,11 @@ html.theme-parchment{
 <!-- LOGIN -->
 <div id="loginScreen">
   <div class="login-card">
-    <div class="login-logo"><h1>IDontAName's D&amp;D Hub</h1><p>Enter your credentials to access the vault</p></div>
+    <div class="login-logo"><h1>IDontAName's D&amp;D Hub</h1></div>
     <div class="login-divider"></div>
     <div class="lfield"><label for="lChar">Character</label><select id="lChar"><option value="">Loading…</option></select></div>
     <div class="lfield"><label for="lPw">Passphrase</label><input id="lPw" type="password" placeholder="••••••••" autocomplete="current-password"/></div>
-    <button class="btn-primary" id="loginBtn">Enter the Vault</button>
+    <button class="btn-primary" id="loginBtn">Log In</button>
     <div class="login-err" id="loginErr"></div>
   </div>
 </div>
@@ -1056,7 +1056,7 @@ function toggleReorder(){
 }
 function addDMRosterButtons(){
   if(document.getElementById("dmAddBtn"))return;
-  const bar=document.querySelector(".topbar"),anchor=document.getElementById("pwBtn");
+  const bar=document.querySelector(".topbar"),anchor=document.querySelector(".topbar-right");
   const mk=(id,label,fn)=>{const b=document.createElement("button");b.className="topbtn";b.id=id;b.textContent=label;b.onclick=fn;bar.insertBefore(b,anchor);};
   mk("dmAddBtn","+ Add NPC",()=>openEditor(null));
   mk("dmReorderBtn","Reorder",toggleReorder);
