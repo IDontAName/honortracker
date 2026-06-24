@@ -255,10 +255,11 @@ textarea.notes:focus{outline:none;border-color:var(--gold-dim)}
 .ip-card.training .ip-num{color:#c084fc}
 .ip-level{color:var(--txt-dim);font-size:.86rem;padding-top:3px}
 .ip-level b{color:var(--parch);font-family:'Cinzel',serif}
-.invest-body{padding:18px 22px 80px;display:flex;flex-direction:column;gap:24px}
-.invest-section-head{font-family:'Cinzel',serif;font-size:.95rem;color:var(--gold);font-weight:600;margin-bottom:12px;padding-bottom:5px;border-bottom:1px solid var(--edge);display:flex;align-items:center;gap:8px}
-.invest-section-head span{font-size:.66rem;color:var(--txt-faint);font-style:italic;font-family:'EB Garamond',serif;font-weight:400}
-.skill-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:10px}
+.invest-body{padding:18px 22px 80px;display:flex;flex-direction:column;flex-wrap:wrap;gap:10px;max-height:calc(100vh - 170px);overflow-x:auto;overflow-y:hidden;align-content:flex-start;-webkit-overflow-scrolling:touch}
+.invest-body>.section-head{width:min(380px,calc(100vw - 44px));flex:0 0 auto;font-family:'Cinzel',serif;font-size:.95rem;color:var(--gold);font-weight:600;padding-bottom:5px;border-bottom:1px solid var(--edge);display:flex;align-items:center;gap:8px;margin-top:14px}
+.invest-body>.section-head:first-child{margin-top:0}
+.invest-body>.section-head span{font-size:.66rem;color:var(--txt-faint);font-style:italic;font-family:'EB Garamond',serif;font-weight:400}
+.invest-body>.skill-card{width:min(380px,calc(100vw - 44px));flex:0 0 auto}
 .skill-card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--edge);border-radius:var(--rad);overflow:hidden;transition:border-color .18s}
 .skill-card:hover{border-color:var(--edge2)}
 .skill-card.mastered{border-color:rgba(201,162,75,.3)}
@@ -524,10 +525,11 @@ html.theme-parchment{
   .fgrid{grid-template-columns:1fr}
   .fgrid .full{grid-column:1}
   .invest-header{flex-direction:column}
-  .invest-body{padding:12px 10px 60px}
+  .invest-body{padding:12px 10px 60px;flex-wrap:nowrap;max-height:none;overflow-x:visible;overflow-y:visible}
+  .invest-body>.skill-card{width:100%}
+  .invest-body>.section-head{width:100%}
   .ip-pool{flex-wrap:wrap;gap:8px}
   .ip-card{min-width:80px;padding:10px 8px}
-  .skill-grid{grid-template-columns:1fr}
 }
 </style>
 </head>
@@ -1426,14 +1428,14 @@ function renderInvestiture(){
   const customSkills=skills.filter(s=>s.skill_type==="custom");
   let html="";
   if(alloSkills.length){
-    html+=`<div><div class="invest-section-head">Allomancy <span>Point costs: T1=1 · T2=+2 · T3=+3 · T4=+4. Mastered: T1 free (max 9 pts).</span></div>
-      <div class="skill-grid">${alloSkills.map(s=>renderAlloCard(s)).join("")}</div></div>`;
+    html+=`<div class="section-head">Allomancy <span>T1=1 · T2=+2 · T3=+3 · T4=+4. Mastered: T1 free (max 9).</span></div>`;
+    html+=alloSkills.map(s=>renderAlloCard(s)).join("");
   }
   if(signetSkills.length){
-    html+=`<div><div class="invest-section-head">Signets <span>Invest points into individual signet abilities.</span></div>
-      <div class="skill-grid">${signetSkills.map(s=>renderSignetCard(s)).join("")}</div></div>`;
+    html+=`<div class="section-head">Signets <span>Invest points into individual signet abilities.</span></div>`;
+    html+=signetSkills.map(s=>renderSignetCard(s)).join("");
     const bc=getBurnoutCaps();const bu=ISTATE.burnout_upgrades||0;
-    html+=`<div class="skill-card" style="margin-top:12px;width:600px;max-width:100%">
+    html+=`<div class="skill-card">
       <div class="skill-card-head"><div class="skill-icon">🔥</div><div class="skill-title"><div class="skill-name">Burnout Reference</div>${bu>0?`<div class="skill-sub" style="color:var(--gold)">${bu} pts invested — Caps: ${bc.risk}/${bc.high}/${bc.complete}</div>`:`<div class="skill-sub">Caps: ${bc.risk}/${bc.high}/${bc.complete}</div>`}</div></div>
       <div class="skill-body" style="font-size:.78rem;line-height:1.5;color:var(--txt-dim)">
         <div style="margin-bottom:8px">All Signets have the same Burnout Thresholds, though some Signets may expend more Burnout Points than others.</div>
@@ -1447,12 +1449,12 @@ function renderInvestiture(){
     </div>`;
   }
   if(customSkills.length){
-    html+=`<div><div class="invest-section-head">Other <span>Custom investable items granted by the DM.</span></div>
-      <div class="skill-grid">${customSkills.map(s=>renderCustomCard(s)).join("")}</div></div>`;
+    html+=`<div class="section-head">Other <span>Custom investable items granted by the DM.</span></div>`;
+    html+=customSkills.map(s=>renderCustomCard(s)).join("");
   }
   if(setItems.length){
-    html+=`<div><div class="invest-section-head">Set Items <span>Alchemist magic items. Rare=3pts · Very Rare=+6 · Legendary=+12 · Artifact=+24.</span></div>
-      <div class="skill-grid">${setItems.map(si=>renderSetItemCard(si)).join("")}</div></div>`;
+    html+=`<div class="section-head">Set Items <span>Rare=3 · Very Rare=+6 · Legendary=+12 · Artifact=+24.</span></div>`;
+    html+=setItems.map(si=>renderSetItemCard(si)).join("");
   }
   if(!html)html=`<div class="empty">No investable abilities have been granted yet.<br><span style="font-size:.85rem;opacity:.7">The DM assigns access to metals, signets, and custom items from the DM Panel.</span></div>`;
   body.innerHTML=html;
