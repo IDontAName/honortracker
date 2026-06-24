@@ -257,8 +257,8 @@ textarea.notes:focus{outline:none;border-color:var(--gold-dim)}
 .invest-body{padding:18px 22px 80px;display:flex;flex-direction:column;gap:24px}
 .invest-section-head{font-family:'Cinzel',serif;font-size:.95rem;color:var(--gold);font-weight:600;margin-bottom:12px;padding-bottom:5px;border-bottom:1px solid var(--edge);display:flex;align-items:center;gap:8px}
 .invest-section-head span{font-size:.66rem;color:var(--txt-faint);font-style:italic;font-family:'EB Garamond',serif;font-weight:400}
-.skill-grid{display:flex;flex-wrap:wrap;gap:10px;max-height:calc(100vh - 180px);overflow-x:auto;overflow-y:hidden;flex-direction:column;align-content:flex-start;padding-bottom:6px}
-.skill-grid .skill-card{width:380px;max-width:calc(100vw - 60px);flex:0 0 auto}
+.skill-grid{display:flex;flex-wrap:wrap;gap:10px;max-height:calc(100vh - 180px);overflow-x:auto;overflow-y:hidden;flex-direction:column;align-content:flex-start;padding-bottom:6px;-webkit-overflow-scrolling:touch}
+.skill-grid .skill-card{width:min(380px,calc(100vw - 44px));flex:0 0 auto}
 .skill-card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--edge);border-radius:var(--rad);overflow:hidden;transition:border-color .18s}
 .skill-card:hover{border-color:var(--edge2)}
 .skill-card.mastered{border-color:rgba(201,162,75,.3)}
@@ -523,6 +523,12 @@ html.theme-parchment{
   .hub-tab{padding:0 10px;font-size:.62rem}
   .fgrid{grid-template-columns:1fr}
   .fgrid .full{grid-column:1}
+  .invest-header{flex-direction:column}
+  .invest-body{padding:12px 10px 60px}
+  .ip-pool{flex-wrap:wrap;gap:8px}
+  .ip-card{min-width:80px;padding:10px 8px}
+  .skill-grid{flex-direction:column;flex-wrap:nowrap;max-height:none;overflow-x:visible;overflow-y:visible}
+  .skill-grid .skill-card{width:100%}
 }
 </style>
 </head>
