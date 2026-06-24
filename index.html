@@ -1426,6 +1426,16 @@ function renderInvestiture(){
   if(signetSkills.length){
     html+=`<div><div class="invest-section-head">Signets <span>Invest points into individual signet abilities.</span></div>
       <div class="skill-grid">${signetSkills.map(s=>renderSignetCard(s)).join("")}</div></div>`;
+    html+=`<div class="skill-card" style="max-width:600px;margin-top:12px">
+      <div class="skill-card-head"><div class="skill-icon">🔥</div><div class="skill-title"><div class="skill-name">Burnout Reference</div></div></div>
+      <div class="skill-body" style="font-size:.78rem;line-height:1.5;color:var(--txt-dim)">
+        <div style="margin-bottom:8px">All Signets have the same Burnout Thresholds, though some Signets may expend more Burnout Points than others.</div>
+        <div style="margin-bottom:6px"><b style="color:var(--gold)">50 Burnout Points — Burnout Risk:</b><br>- All damage dealt to you is doubled, which bypasses resistances. Immunity causes damage to be normal instead<br>- You automatically fail all saving throws</div>
+        <div style="margin-bottom:6px"><b style="color:var(--blood-bright)">65 Burnout Points — High Burnout:</b><br>- All effects of Burnout Risk<br>- You cannot receive any healing from any source<br>- Every time you wield you take damage equal to 20% your max hp, which cannot be transferred or reduced<br>- Effects that prevent you from dying at 0 hitpoints that are not Invested do not function<br>- If you die, you simply die without death saves</div>
+        <div style="margin-bottom:6px"><b style="color:#fff">75 Burnout Points — Complete Burnout:</b><br>- You die. Nothing can bring you back, not even a Shard</div>
+        <div style="border-top:1px dotted var(--edge);padding-top:6px;margin-top:8px"><b style="color:var(--parch)">Recovery:</b><br>- Short rest: reduce burnout by 20% of your Burnout Risk cap<br>- Long rest: reduce burnout by 80% of your Burnout Risk cap</div>
+      </div>
+    </div>`;
   }
   if(customSkills.length){
     html+=`<div><div class="invest-section-head">Other <span>Custom investable items granted by the DM.</span></div>
