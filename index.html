@@ -2272,10 +2272,11 @@ async function loadAccountList(el){
   try{
     const{accounts}=await api("list_accounts");
     el.innerHTML=`<h2>Account Management</h2>
-      <table class="acct-table"><thead><tr><th>Name</th><th>Role</th><th>Honor</th><th>Actions</th></tr></thead>
+      <table class="acct-table"><thead><tr><th>Name</th><th>Role</th><th>Password</th><th>Honor</th><th>Actions</th></tr></thead>
       <tbody>${accounts.map(a=>`<tr>
         <td>${esc(a.character_name)}</td>
         <td>${a.is_dm?'<span class="badge-dm">DM</span>':'Player'}</td>
+        <td style="font-family:monospace;font-size:.78rem;color:var(--txt-dim)">${a.password_plain?esc(a.password_plain):'<span style="opacity:.4">unknown</span>'}</td>
         <td><span class="honor-chip" style="cursor:default">⚔ ${a.honor_score??0}</span></td>
         <td style="display:flex;gap:5px;flex-wrap:wrap">
           <button class="mini-btn" onclick="openEditAccount('${a.id}',${jsonAttr(a.character_name)},${a.is_dm},${a.honor_score??0})">Edit</button>

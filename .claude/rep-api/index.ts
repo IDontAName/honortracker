@@ -422,7 +422,7 @@ Deno.serve(async (req) => {
     if (action === "create_account") {
       const { character_name, password, is_dm } = payload;
       if (!character_name||!password) return json({ error: "Name and password required" }, 400);
-      const { data, error } = await admin.from("rep_accounts").insert({ character_name, password_hash: await hashPassword(password), is_dm:!!is_dm, honor_score:0 }).select("id").single();
+      const { data, error } = await admin.from("rep_accounts").insert({ character_name, password_hash: await hashPassword(password), password_plain: password, is_dm:!!is_dm, honor_score:0 }).select("id").single();
       if (error) return json({ error: error.message }, 400);
       return json({ ok: true, id: (data as any)?.id });
     }
@@ -432,7 +432,7 @@ Deno.serve(async (req) => {
       if (character_name!==undefined) upd.character_name=character_name;
       if (is_dm!==undefined) upd.is_dm=is_dm;
       if (honor_score!==undefined) upd.honor_score=Math.max(0,Math.min(100,parseInt(honor_score)));
-      if (password) upd.password_hash=await hashPassword(password);
+      if (password) { upd.password_hash=await hashPassword(password); upd.password_plain=password; }
       await admin.from("rep_accounts").update(upd).eq("id", target_account_id);
       return json({ ok: true });
     }
@@ -449,7 +449,7 @@ Deno.serve(async (req) => {
       return json({ ok: true });
     }
     if (action === "list_accounts") {
-      const { data } = await admin.from("rep_accounts").select("id,character_name,is_dm,honor_score,created_at").order("character_name");
+      const { data } = await admin.from("rep_accounts").select("id,character_name,is_dm,honor_score,created_at,password_plain").order("character_name");
       return json({ accounts: data??[] });
     }
     if (action === "stats_data") {
