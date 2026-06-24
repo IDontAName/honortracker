@@ -943,11 +943,11 @@ const SIGNETS={
   true_invisibility:{name:"True Invisibility",key:"true_invisibility",icon:"\u{1F441}\uFE0F\u200D\u{1F5E8}\uFE0F",rank:"Extraordinary",passive:"Details unknown in-game.",upgrades:[]},
   memory_modification:{name:"Memory Modification",key:"memory_modification",icon:"\u{1F9E0}",rank:"Extraordinary",passive:"Details unknown in-game.",upgrades:[]}
 };
-let TOKEN=localStorage.getItem(TKEY)||null;
+let TOKEN=sessionStorage.getItem(TKEY+"_imp")||localStorage.getItem(TKEY)||null;
 let ME={name:null,is_dm:false,honor_score:0};
 let STATE={npcs:[],scores:{},notes:{},honor_score:0,rep_groups:[]};
 let ISTATE=null;
-let selectedId=null,reorderMode=false,portraitsMode=false,portraitGrouped=true,previewMode=null;
+let selectedId=null,reorderMode=false,portraitsMode=false,portraitGrouped=true;
 let players=[],_pollTimer=null,customItems=[];
 let activeTab="honor",activeDmSub="players";
 
@@ -965,6 +965,7 @@ function toast(msg,dur=2400){
   clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("show"),dur);
 }
 const esc=s=>(s==null?"":String(s)).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function quickBtns(inputId,max){return [1,5,10].filter(a=>a<=max).map(a=>`<button class="mini-btn" style="padding:4px 10px;font-size:.78rem" onclick="document.getElementById('${inputId}').value=${a}">+${a}</button>`).join('');}
 function fmtDate(iso){if(!iso)return"";const d=new Date(iso);return d.toLocaleDateString(undefined,{month:"short",day:"numeric",year:"2-digit"})+" "+d.toLocaleTimeString(undefined,{hour:"2-digit",minute:"2-digit"});}
 // Safe encoding for string values placed inside onclick="fn(HERE)" attributes.
 // JSON.stringify gives a valid JS literal; replace " with &quot; so it doesn't
@@ -1012,11 +1013,9 @@ async function enterHub(){
   await refreshState();
   loadInboxBadge();
 }
-function updateWhoami(previewName){
+function updateWhoami(){
   const el=document.getElementById("whoami");
-  if(previewName){
-    el.innerHTML=`<span style="color:var(--blood-bright)">Previewing as</span> <b>${esc(previewName)}</b> <button class="mini-btn" onclick="exitPreview()" style="margin-left:6px">Exit</button>`;
-  }else if(ME.is_dm){
+  if(ME.is_dm){
     el.innerHTML=`Logged in as <b>${esc(ME.name)}</b><span class="badge-dm">DM</span>`;
   }else{
     const h=ME.honor_score??0;
@@ -1069,7 +1068,7 @@ window.addEventListener("load",async()=>{
   document.getElementById("modalBg").addEventListener("click",e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove("open");});
   const impParam=new URLSearchParams(location.search).get("imp_token");
   if(impParam){
-    TOKEN=impParam;localStorage.setItem(TKEY,TOKEN);
+    TOKEN=impParam;sessionStorage.setItem(TKEY+"_imp",TOKEN);
     history.replaceState(null,"",location.pathname);
   }
   if(TOKEN)await tryResume();
@@ -1167,7 +1166,7 @@ function peersOf(n){
   return STATE.npcs.filter(x=>(x.grp||"Unaffiliated")===g&&subgroupKeyFor(x)===sg).sort((a,b)=>(a.sort_order??1e9)-(b.sort_order??1e9));
 }
 function cardHTML(n){
-  const base=repOf(n.id),v=effectiveScore(n.id),hasBonus=v!==base&&!ME.is_dm&&!previewMode?.isDM,pos=posText(n);
+  const base=repOf(n.id),v=effectiveScore(n.id),hasBonus=v!==base&&!ME.is_dm,pos=posText(n);
   if(reorderMode){
     return `<div class="card reorder ${n.deceased?'dead':''}" data-id="${n.id}">
       <div class="reorder-handles"><button class="ro-btn" data-dir="up">▲</button><button class="ro-btn" data-dir="down">▼</button></div>
@@ -1382,10 +1381,7 @@ function addDMRosterButtons(){
   mk("dmReorderBtn","Reorder",toggleReorder);
   mk("dmRepGroupsBtn","Rep Groups",()=>{switchTab("dmpanel");switchDmSub("repgroups");});
   mk("dmRenameBtn","Rename Labels",()=>{switchTab("dmpanel");switchDmSub("rename");});
-  mk("dmPreviewBtn","Preview As…",openPreviewPicker);
-}
-async function exitPreview(){
-  previewMode=null;STATE.honor_score=0;await refreshState();updateWhoami(null);toast("Exited preview");
+  mk("dmPreviewBtn","View As…",openPreviewPicker);
 }
 function showHonorExplain(){
   const mb=document.getElementById("modalBg"),m=document.getElementById("modal");
@@ -1663,7 +1659,6 @@ function openInvestModal(type,id,name,suggestedAmt,upgradeKey,upgradeName){
   const skill=(ISTATE.skills||[]).find(s=>s.id===id);
   const isSignet=skill&&skill.skill_type==="signet";
   const totalAvail=isSignet?avail+tp:avail;
-  const quickAmts=[1,5,10].filter(a=>a<=totalAvail);
   m.innerHTML=`<h3>Invest Points</h3>
     <div class="msub">Allocating into: <b>${esc(name)}</b></div>
     <div style="margin-bottom:6px;color:var(--txt-dim);font-size:.88rem">Available IP: <b style="color:var(--pos-bright);font-family:'Cinzel',serif">${avail}</b>${isSignet&&tp>0?` &nbsp;|&nbsp; Training Pts: <b style="color:#c084fc;font-family:'Cinzel',serif">${tp}</b>`:''}</div>
@@ -1671,7 +1666,7 @@ function openInvestModal(type,id,name,suggestedAmt,upgradeKey,upgradeName){
     <div style="display:flex;align-items:center;gap:10px;margin:12px 0">
       <label style="font-size:.66rem;text-transform:uppercase;letter-spacing:.12em;color:var(--gold-dim);font-family:'Cinzel',serif">Amount:</label>
       <input type="number" id="imAmt" min="1" max="${totalAvail}" value="${Math.min(suggestedAmt||1,totalAvail)}" style="width:72px;padding:8px;background:var(--ink);border:1px solid var(--edge);border-radius:var(--rad);color:var(--txt);font-size:1rem;text-align:center;font-family:'Cinzel',serif"/>
-      <div style="display:flex;gap:4px">${quickAmts.map(a=>`<button class="mini-btn" style="padding:4px 10px;font-size:.78rem" onclick="document.getElementById('imAmt').value=${a}">+${a}</button>`).join('')}</div>
+      <div style="display:flex;gap:4px">${quickBtns('imAmt',totalAvail)}</div>
     </div>
     <div style="font-size:.8rem;color:var(--txt-dim);font-style:italic;margin-bottom:6px">Points are permanently locked. Only the DM can refund them.</div>
     <div class="modal-actions">
@@ -1748,7 +1743,6 @@ function investBurnoutUpgrade(presetAmt){
   if(maxAfford<1){toast("Not enough points");return;}
   const mb=document.getElementById("modalBg"),m=document.getElementById("modal");
   const bc=getBurnoutCaps();
-  const quickAmts=[1,5,10].filter(a=>a<=maxAfford);
   m.innerHTML=`<h3>Raise Burnout Caps</h3>
     <div class="msub">All 3 thresholds raised by the same amount.</div>
     <div style="margin-bottom:6px;color:var(--txt-dim);font-size:.88rem">Available IP: <b style="color:var(--pos-bright);font-family:'Cinzel',serif">${ap}</b>${tp>0?` &nbsp;|&nbsp; Training Pts: <b style="color:#c084fc;font-family:'Cinzel',serif">${tp}</b>`:''}</div>
@@ -1757,7 +1751,7 @@ function investBurnoutUpgrade(presetAmt){
     <div style="display:flex;align-items:center;gap:10px;margin:12px 0">
       <label style="font-size:.66rem;text-transform:uppercase;letter-spacing:.12em;color:var(--gold-dim);font-family:'Cinzel',serif">Amount:</label>
       <input type="number" id="burnCapAmt" min="1" max="${maxAfford}" value="${Math.min(presetAmt||1,maxAfford)}" style="width:72px;padding:8px;background:var(--ink);border:1px solid var(--edge);border-radius:var(--rad);color:var(--txt);font-size:1rem;text-align:center;font-family:'Cinzel',serif"/>
-      <div style="display:flex;gap:4px">${quickAmts.map(a=>`<button class="mini-btn" style="padding:4px 10px;font-size:.78rem" onclick="document.getElementById('burnCapAmt').value=${a}">+${a}</button>`).join('')}</div>
+      <div style="display:flex;gap:4px">${quickBtns('burnCapAmt',maxAfford)}</div>
     </div>
     <div class="modal-actions">
       <button class="mini-btn" onclick="document.getElementById('modalBg').classList.remove('open')">Cancel</button>
@@ -1862,7 +1856,7 @@ async function renderDmCombat(c){
           const m=METALS[mc.skill_key];
           const maxC=m?m.charges:0;
           const cur=mc.current_charges!=null?mc.current_charges:maxC;
-          const chargeColor=maxC>0&&cur<=Math.floor(maxC*0.25)?"var(--blood-bright)":cur<=Math.floor(maxC*0.5)?"var(--gold)":"var(--pos)";
+          const chargeColor=maxC<=0?"var(--txt-dim)":cur<=Math.floor(maxC*0.25)?"var(--blood-bright)":cur<=Math.floor(maxC*0.5)?"var(--gold)":"var(--pos)";
           return `<div class="combat-metal-row"><span class="metal-name">${m?m.icon+" ":""}${esc(mc.skill_name)}</span><span class="metal-charges" style="color:${chargeColor}">${cur}/${maxC}</span></div>`;
         }).join("");
       }
@@ -2115,11 +2109,9 @@ async function dmGrantSkill(pid,type){
 async function dmGrantMistborn(pid){
   if(!confirm("Grant all allomantic metals (Mistborn)? This adds all 16 metals + Passive Metal Control."))return;
   try{
-    for(const key of Object.keys(METALS)){
-      const m=METALS[key];
-      await api("dm_grant_skill",{target_account_id:pid,skill_type:"allomancy",skill_key:key,skill_name:m.name});
-    }
-    await api("dm_grant_skill",{target_account_id:pid,skill_type:"passive",skill_key:"passives",skill_name:"Passive Metal Control"});
+    const calls=Object.keys(METALS).map(key=>api("dm_grant_skill",{target_account_id:pid,skill_type:"allomancy",skill_key:key,skill_name:METALS[key].name}));
+    calls.push(api("dm_grant_skill",{target_account_id:pid,skill_type:"passive",skill_key:"passives",skill_name:"Passive Metal Control"}));
+    await Promise.all(calls);
     toast("Mistborn — all metals granted");await reloadPlayerDetail(pid);
   }catch(e){toast("Error: "+e.message);}
 }
