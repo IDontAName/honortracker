@@ -102,7 +102,8 @@ async function getPlayerInvestiture(accountId: string) {
   const spentInSkills = skills.reduce((a:number,s:any)=>a+s.points_invested,0);
   const spentInSetItems = (setItemsR.data??[]).reduce((a:number,si:any)=>a+si.points_invested,0);
   const trainingPoints = pool.training_points ?? 0;
-  const regularAvail = pool.total_points - spentInSkills - spentInSetItems;
+  const burnoutSpent = pool.burnout_upgrades ?? 0;
+  const regularAvail = pool.total_points - spentInSkills - spentInSetItems - burnoutSpent;
   return {
     pool,
     skills: skillsWithUpgrades,
@@ -312,29 +313,11 @@ Deno.serve(async (req) => {
       const ipUsed = amt - tpUsed;
       const upd: any = { burnout_upgrades: curUpgrades + amt };
       if (tpUsed > 0) upd.training_points = state.training_points - tpUsed;
-      if (ipUsed > 0) upd.total_points = pool.total_points - ipUsed;
       await admin.from("player_investiture").update(upd).eq("account_id", me.id);
       return json({ ok: true, burnout_upgrades: curUpgrades + amt });
     }
 
     // --- DM ONLY BELOW ---
-    if (action === "preview_as_player") {
-      if (!me.is_dm) return json({ error: "DM only" }, 403);
-      const { data: tAcct } = await admin.from("rep_accounts").select("id,character_name,honor_score").eq("id", payload.target_account_id).maybeSingle();
-      if (!tAcct) return json({ error: "Not found" }, 404);
-      const [npcsR, scoresR, notesR, groupsR] = await Promise.all([
-        admin.from("rep_npcs").select("*").order("grp").order("sort_order"),
-        admin.from("rep_scores").select("npc_id,value").eq("account_id", (tAcct as any).id),
-        admin.from("rep_notes").select("npc_id,body").eq("account_id", (tAcct as any).id),
-        admin.from("rep_groups").select("id,name,primary_npc_id").order("name"),
-      ]);
-      const scores: Record<string,number> = {};
-      (scoresR.data ?? []).forEach((s: any) => { scores[s.npc_id] = s.value; });
-      const notes: Record<string,string> = {};
-      (notesR.data ?? []).forEach((n: any) => { notes[n.npc_id] = n.body; });
-      return json({ npcs: npcsR.data??[], scores, notes, is_dm: false, honor_score: (tAcct as any).honor_score??0, previewing_as: (tAcct as any).character_name, rep_groups: groupsR.data??[] });
-    }
-
     if (!me.is_dm) return json({ error: "DM only" }, 403);
 
     if (action === "dm_impersonate") {
