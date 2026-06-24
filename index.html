@@ -1829,14 +1829,14 @@ async function renderDmCombat(c){
       const burnout=p.burnout_current||0;
       const burnoutPct=Math.min(burnout/bComp*100,100);
       const burnoutColor=burnout>=bComp?"#fff":burnout>=bHigh?"var(--blood-bright)":burnout>=bRisk?"var(--gold)":"var(--pos)";
-      const burnoutLabel=burnout>=bComp?"COMPLETE":burnout>=bHigh?"HIGH RISK":burnout>=bRisk?"AT RISK":"OK";
       let chargesHTML="";
       if(p.metal_charges&&p.metal_charges.length){
         chargesHTML=p.metal_charges.map(mc=>{
           const m=METALS[mc.skill_key];
           const maxC=m?m.charges:0;
           const cur=mc.current_charges!=null?mc.current_charges:maxC;
-          return `<div class="combat-metal-row"><span class="metal-name">${m?m.icon+" ":""}${esc(mc.skill_name)}</span><span class="metal-charges">${cur}${maxC?'/'+maxC:''}</span></div>`;
+          const chargeColor=maxC>0&&cur<=Math.floor(maxC*0.25)?"var(--blood-bright)":cur<=Math.floor(maxC*0.5)?"var(--gold)":"var(--pos)";
+          return `<div class="combat-metal-row"><span class="metal-name">${m?m.icon+" ":""}${esc(mc.skill_name)}</span><span class="metal-charges" style="color:${chargeColor}">${cur}/${maxC}</span></div>`;
         }).join("");
       }
       html+=`<div class="combat-player-card">
@@ -1847,23 +1847,13 @@ async function renderDmCombat(c){
             <button class="mini-btn" style="font-size:.5rem;padding:3px 7px" onclick="dmResetCombat('${p.account_id}','charges')">Reset Charges</button>
           </div>
         </div>
-        <div class="combat-row"><span class="lbl">Burnout</span><span class="val" style="color:${burnoutColor}">${burnout}</span><span style="font-size:.68rem;color:${burnoutColor};margin-left:4px">${burnoutLabel}</span></div>
+        <div class="combat-row"><span class="lbl">Burnout</span><span class="val" style="color:${burnoutColor}">${burnout}/${bRisk}</span></div>
         <div style="height:6px;background:var(--ink);border:1px solid var(--edge);border-radius:4px;margin:4px 0 8px;overflow:hidden"><div style="height:100%;width:${burnoutPct}%;background:${burnoutColor};border-radius:4px;transition:width .3s"></div></div>
         ${p.has_signets?"":'<div style="font-size:.7rem;color:var(--txt-faint);font-style:italic">No signets</div>'}
         ${chargesHTML?`<div style="margin-top:4px"><div style="font-size:.6rem;color:var(--gold-dim);font-family:Cinzel,serif;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px">Metal Charges</div>${chargesHTML}</div>`:''}
       </div>`;
     }
-    html+=`</div>
-      <div style="margin-top:20px;border-top:1px solid var(--edge);padding-top:16px">
-        <h3 style="font-size:.9rem;color:var(--gold);margin-bottom:10px">Grant Training Points</h3>
-        <p style="color:var(--txt-faint);font-size:.78rem;margin-bottom:10px;font-style:italic">Training points can only be spent on signets or raising burnout caps. Used before regular IP.</p>
-        <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
-          <div class="lfield" style="margin:0"><label>Player</label><select id="tpPlayer" style="padding:8px;background:var(--ink);border:1px solid var(--edge);border-radius:var(--rad);color:var(--txt);font-size:.86rem">${players.map(p=>`<option value="${p.account_id}">${esc(p.character_name)}</option>`).join("")}</select></div>
-          <div class="lfield" style="margin:0"><label>Amount</label><input type="number" id="tpAmount" value="1" min="1" style="width:70px;padding:8px;background:var(--ink);border:1px solid var(--edge);border-radius:var(--rad);color:var(--txt);font-size:.86rem;text-align:center"/></div>
-          <div class="lfield" style="margin:0"><label>Note</label><input type="text" id="tpNote" placeholder="Optional note" style="width:180px;padding:8px;background:var(--ink);border:1px solid var(--edge);border-radius:var(--rad);color:var(--txt);font-size:.86rem"/></div>
-          <button class="mini-btn go" onclick="dmGrantTrainingPoints()">Grant</button>
-        </div>
-      </div>`;
+    html+=`</div>`;
     c.innerHTML=html;
   }catch(e){c.innerHTML=`<h2>Combat Summary</h2><div class="empty" style="color:var(--blood-bright)">${esc(e.message)}</div>`;}
 }
@@ -1874,16 +1864,6 @@ async function dmResetCombat(accountId,resetType){
   try{
     await api("dm_reset_combat",{target_account_id:accountId||undefined,reset_type:resetType});
     toast("Reset complete");loadDmSub("combat");
-  }catch(e){toast("Error: "+e.message);}
-}
-async function dmGrantTrainingPoints(){
-  const pid=document.getElementById("tpPlayer").value;
-  const amt=parseInt(document.getElementById("tpAmount").value);
-  const note=document.getElementById("tpNote").value;
-  if(!pid||isNaN(amt)||amt<1){toast("Invalid input");return;}
-  try{
-    const r=await api("dm_add_training_points",{target_account_id:pid,amount:amt,note});
-    toast(`Granted ${amt} training point${amt!==1?"s":""}. New total: ${r.training_points}`);
   }catch(e){toast("Error: "+e.message);}
 }
 // --- DM: PLAYERS TAB ---
@@ -1986,7 +1966,14 @@ async function loadPlayerDetail(pid,el){
           <input type="text" placeholder="Note (optional)" id="pnote_${pid}" style="flex:1;padding:5px 7px;background:var(--ink);border:1px solid var(--edge);border-radius:var(--rad);color:var(--txt);font-size:.82rem"/>
           <button class="mini-btn go" onclick="dmAddIp('${pid}')">Add</button>
         </div>
-        <div style="font-size:.78rem;color:var(--txt-dim);margin-top:6px">Total: <b style="color:var(--parch)">${state.total_points}</b> &nbsp;|&nbsp; Spent: <b style="color:var(--blood-bright)">${state.spent_points}</b> &nbsp;|&nbsp; Available: <b style="color:var(--pos-bright)">${state.available_points}</b></div>
+        <div style="font-size:.78rem;color:var(--txt-dim);margin-top:6px">Total: <b style="color:var(--parch)">${state.total_points}</b> &nbsp;|&nbsp; Spent: <b style="color:var(--blood-bright)">${state.spent_points}</b> &nbsp;|&nbsp; Available: <b style="color:var(--pos-bright)">${state.available_points}</b>${state.training_points?` &nbsp;|&nbsp; <b style="color:#c084fc">TP: ${state.training_points}</b>`:''}</div>
+        <div class="pd-row" style="margin-top:8px">
+          <label>Training Pts</label>
+          <input type="number" value="1" min="1" id="ptp_${pid}" style="width:60px;padding:5px 7px;background:var(--ink);border:1px solid var(--edge);border-radius:var(--rad);color:var(--txt);font-size:.86rem"/>
+          <input type="text" placeholder="Note (optional)" id="ptpnote_${pid}" style="flex:1;padding:5px 7px;background:var(--ink);border:1px solid var(--edge);border-radius:var(--rad);color:var(--txt);font-size:.82rem"/>
+          <button class="mini-btn go" onclick="dmGrantTp('${pid}')">Grant TP</button>
+        </div>
+        <div style="font-size:.72rem;color:var(--txt-faint);margin-top:2px;font-style:italic">Training points can only be spent on signets or raising burnout caps. Used before regular IP.</div>
         <div style="margin-top:6px"><button class="mini-btn" onclick="dmShowIpLog('${pid}')">View IP Log</button></div>
       </div>
       <div class="pd-section">
@@ -2051,6 +2038,16 @@ async function dmAddIp(pid){
   if(isNaN(amt)){toast("Invalid amount");return;}
   try{await api("dm_add_ip",{target_account_id:pid,amount:amt,note});
     toast(`${amt>=0?'+':''}${amt} IP ${note?`(${note}) `:''}added`);
+    await reloadPlayerDetail(pid);
+  }catch(e){toast("Error: "+e.message);}
+}
+async function dmGrantTp(pid){
+  const amt=parseInt(document.getElementById(`ptp_${pid}`).value);
+  const note=document.getElementById(`ptpnote_${pid}`).value;
+  if(isNaN(amt)||amt<1){toast("Invalid amount");return;}
+  try{
+    const r=await api("dm_add_training_points",{target_account_id:pid,amount:amt,note});
+    toast(`Granted ${amt} training point${amt!==1?"s":""}. New total: ${r.training_points}`);
     await reloadPlayerDetail(pid);
   }catch(e){toast("Error: "+e.message);}
 }
