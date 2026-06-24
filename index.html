@@ -252,13 +252,13 @@ textarea.notes:focus{outline:none;border-color:var(--gold-dim)}
 .ip-card .ip-lbl{font-size:.58rem;text-transform:uppercase;letter-spacing:.13em;color:var(--gold-dim);margin-top:3px;font-family:'Cinzel',serif}
 .ip-card.avail .ip-num{color:var(--pos-bright)}
 .ip-card.spent .ip-num{color:var(--blood-bright)}
+.ip-card.training .ip-num{color:#c084fc}
 .ip-level{color:var(--txt-dim);font-size:.86rem;padding-top:3px}
 .ip-level b{color:var(--parch);font-family:'Cinzel',serif}
 .invest-body{padding:18px 22px 80px;display:flex;flex-direction:column;gap:24px}
 .invest-section-head{font-family:'Cinzel',serif;font-size:.95rem;color:var(--gold);font-weight:600;margin-bottom:12px;padding-bottom:5px;border-bottom:1px solid var(--edge);display:flex;align-items:center;gap:8px}
 .invest-section-head span{font-size:.66rem;color:var(--txt-faint);font-style:italic;font-family:'EB Garamond',serif;font-weight:400}
-.skill-grid{display:flex;flex-wrap:wrap;gap:10px;max-height:calc(100vh - 180px);overflow-x:auto;overflow-y:hidden;flex-direction:column;align-content:flex-start;padding-bottom:6px;-webkit-overflow-scrolling:touch}
-.skill-grid .skill-card{width:min(380px,calc(100vw - 44px));flex:0 0 auto}
+.skill-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:10px}
 .skill-card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--edge);border-radius:var(--rad);overflow:hidden;transition:border-color .18s}
 .skill-card:hover{border-color:var(--edge2)}
 .skill-card.mastered{border-color:rgba(201,162,75,.3)}
@@ -527,8 +527,7 @@ html.theme-parchment{
   .invest-body{padding:12px 10px 60px}
   .ip-pool{flex-wrap:wrap;gap:8px}
   .ip-card{min-width:80px;padding:10px 8px}
-  .skill-grid{flex-direction:column;flex-wrap:nowrap;max-height:none;overflow-x:visible;overflow-y:visible}
-  .skill-grid .skill-card{width:100%}
+  .skill-grid{grid-template-columns:1fr}
 }
 </style>
 </head>
@@ -602,7 +601,7 @@ html.theme-parchment{
         <div class="ip-card avail"><div class="ip-num" id="ipAvail">—</div><div class="ip-lbl">Available IP</div></div>
         <div class="ip-card"><div class="ip-num" id="ipTotal">—</div><div class="ip-lbl">Total Earned</div></div>
         <div class="ip-card spent"><div class="ip-num" id="ipSpent">—</div><div class="ip-lbl">Invested</div></div>
-        <div class="ip-card training" id="ipTrainingCard" style="display:none" title="Training Points — granted by DM. Can only be spent on signets or raising burnout caps. Used before regular IP."><div class="ip-num" id="ipTraining">0</div><div class="ip-lbl">Training Pts</div></div>
+        <div class="ip-card training" id="ipTrainingCard" title="Training Points — granted by DM. Can only be spent on signets or raising burnout caps. Used before regular IP."><div class="ip-num" id="ipTraining">0</div><div class="ip-lbl">Training Pts</div></div>
       </div>
       <div style="flex:1;min-width:200px">
         <div class="ip-level">Level: <b id="ipLevel">—</b></div>
@@ -1415,8 +1414,7 @@ function renderInvestiture(){
   document.getElementById("ipSpent").textContent=ISTATE.spent_points;
   document.getElementById("ipLevel").textContent=ISTATE.pool?.level??1;
   const tp=ISTATE.training_points||0;
-  const tpCard=document.getElementById("ipTrainingCard");
-  if(tp>0){tpCard.style.display="";document.getElementById("ipTraining").textContent=tp;}else{tpCard.style.display="none";}
+  document.getElementById("ipTraining").textContent=tp;
   const hasSignets=(ISTATE.skills||[]).some(s=>s.skill_type==="signet");
   const burnoutEl=document.getElementById("burnoutDisplay");
   if(hasSignets){burnoutEl.style.display="";updateBurnoutUI(ISTATE.burnout_current||0);}else{burnoutEl.style.display="none";}
