@@ -65,7 +65,7 @@ input,select,textarea{font-family:inherit}
 .topbar{position:sticky;top:0;z-index:20;backdrop-filter:blur(10px);
   background:linear-gradient(180deg,rgba(20,18,27,.97),rgba(20,18,27,.85));
   border-bottom:1px solid var(--edge);padding:0 18px;
-  display:flex;align-items:stretch;min-height:54px;gap:0}
+  display:flex;align-items:stretch;min-height:54px;gap:0;flex-wrap:wrap}
 .brand{display:flex;align-items:center;gap:10px;margin-right:14px;padding:10px 0;flex-shrink:0}
 .brand h1{font-size:.95rem;color:var(--gold);font-weight:600;line-height:1;white-space:nowrap}
 .brand small{display:block;color:var(--gold-dim);font-size:.52rem;letter-spacing:.18em;text-transform:uppercase;margin-top:2px;font-family:'Cinzel',serif}
@@ -84,7 +84,7 @@ input,select,textarea{font-family:inherit}
 .badge-dm{display:inline-block;margin-left:5px;font-size:.52rem;letter-spacing:.12em;text-transform:uppercase;
   background:var(--blood);color:#fff;padding:2px 5px;border-radius:3px;font-family:'Cinzel',serif;vertical-align:middle}
 .topbtn{font-size:.64rem;text-transform:uppercase;letter-spacing:.09em;font-family:'Cinzel',serif;
-  color:var(--txt-dim);border:1px solid var(--edge);padding:5px 10px;border-radius:var(--rad);transition:.15s;white-space:nowrap}
+  color:var(--txt-dim);border:1px solid var(--edge);padding:6px 12px;border-radius:var(--rad);transition:.15s;white-space:nowrap;margin:2px 3px}
 .topbtn:hover{color:var(--parch);border-color:var(--gold-dim)}
 .topbtn.on{color:#1a1510;background:var(--gold);border-color:var(--gold)}
 .honor-chip{display:inline-block;cursor:pointer;background:rgba(201,162,75,.12);border:1px solid var(--gold-dim);
@@ -1060,6 +1060,11 @@ window.addEventListener("load",async()=>{
   document.getElementById("cPortraits").addEventListener("click",e=>{portraitsMode=!portraitsMode;e.currentTarget.classList.toggle("on",portraitsMode);render();});
   document.getElementById("cGroups").addEventListener("click",e=>{portraitGrouped=!portraitGrouped;e.currentTarget.classList.toggle("on",portraitGrouped);if(portraitsMode)render();});
   document.getElementById("modalBg").addEventListener("click",e=>{if(e.target===e.currentTarget)e.currentTarget.classList.remove("open");});
+  const impParam=new URLSearchParams(location.search).get("imp_token");
+  if(impParam){
+    TOKEN=impParam;localStorage.setItem(TKEY,TOKEN);
+    history.replaceState(null,"",location.pathname);
+  }
   if(TOKEN)await tryResume();
 });
 function switchTab(tab){
@@ -1428,15 +1433,15 @@ function renderInvestiture(){
       <div class="skill-grid">${signetSkills.map(s=>renderSignetCard(s)).join("")}</div></div>`;
     const bc=getBurnoutCaps();const bu=ISTATE.burnout_upgrades||0;
     html+=`<div class="skill-card" style="max-width:600px;margin-top:12px">
-      <div class="skill-card-head"><div class="skill-icon">🔥</div><div class="skill-title"><div class="skill-name">Burnout Reference</div>${bu>0?`<div class="skill-sub" style="color:var(--gold)">Caps raised +${bu}</div>`:""}</div></div>
+      <div class="skill-card-head"><div class="skill-icon">🔥</div><div class="skill-title"><div class="skill-name">Burnout Reference</div>${bu>0?`<div class="skill-sub" style="color:var(--gold)">${bu} pts invested — Caps: ${bc.risk}/${bc.high}/${bc.complete}</div>`:`<div class="skill-sub">Caps: ${bc.risk}/${bc.high}/${bc.complete}</div>`}</div></div>
       <div class="skill-body" style="font-size:.78rem;line-height:1.5;color:var(--txt-dim)">
         <div style="margin-bottom:8px">All Signets have the same Burnout Thresholds, though some Signets may expend more Burnout Points than others.</div>
         <div style="margin-bottom:6px"><b style="color:var(--gold)">${bc.risk} Burnout Points — Burnout Risk:</b><br>- All damage dealt to you is doubled, which bypasses resistances. Immunity causes damage to be normal instead<br>- You automatically fail all saving throws</div>
         <div style="margin-bottom:6px"><b style="color:var(--blood-bright)">${bc.high} Burnout Points — High Burnout:</b><br>- All effects of Burnout Risk<br>- You cannot receive any healing from any source<br>- Every time you wield you take damage equal to 20% your max hp, which cannot be transferred or reduced<br>- Effects that prevent you from dying at 0 hitpoints that are not Invested do not function<br>- If you die, you simply die without death saves</div>
         <div style="margin-bottom:6px"><b style="color:#fff">${bc.complete} Burnout Points — Complete Burnout:</b><br>- You die. Nothing can bring you back, not even a Shard</div>
         <div style="border-top:1px dotted var(--edge);padding-top:6px;margin-top:8px"><b style="color:var(--parch)">Recovery:</b><br>- Short rest: reduce burnout by 20% of your Burnout Risk cap<br>- Long rest: reduce burnout by 80% of your Burnout Risk cap</div>
-        <div style="border-top:1px dotted var(--edge);padding-top:6px;margin-top:8px"><b style="color:var(--parch)">Raise Caps:</b> Spend 1 Training Point (or 1 IP) to raise all 3 thresholds by 1.<br>
-        <button class="mini-btn go" style="margin-top:6px" onclick="investBurnoutUpgrade()">Raise Caps (+1) — Cost: 1 pt</button></div>
+        <div style="border-top:1px dotted var(--edge);padding-top:6px;margin-top:8px"><b style="color:var(--parch)">Raise Caps:</b> Spend Training Points (or IP) to raise all 3 thresholds. TP is used first.<br>
+        <button class="mini-btn go" style="margin-top:6px" onclick="investBurnoutUpgrade()">Raise Caps — 1 pt each</button></div>
       </div>
     </div>`;
   }
@@ -1731,10 +1736,16 @@ async function setBurnoutManual(){
 }
 async function investBurnoutUpgrade(){
   const tp=ISTATE.training_points||0;const ap=ISTATE.available_points||0;
-  if(tp+ap<1){toast("Not enough points");return;}
-  const src=tp>0?"1 Training Point":"1 IP";
-  if(!confirm(`Raise all burnout caps by 1?\nCost: ${src}`))return;
-  try{const r=await api("invest_burnout_upgrade",{});ISTATE.burnout_upgrades=r.burnout_upgrades;await loadInvestiture();toast("Burnout caps raised!");}catch(e){toast("Error: "+e.message);}
+  const maxAfford=tp+ap;
+  if(maxAfford<1){toast("Not enough points");return;}
+  const input=prompt(`Raise all burnout caps by how much?\nYou can afford up to ${maxAfford} (${tp} TP + ${ap} IP).\nTraining points are used first.`,"1");
+  if(input===null)return;
+  const amt=Math.max(1,parseInt(input)||1);
+  if(amt>maxAfford){toast("Not enough points (max "+maxAfford+")");return;}
+  const tpUsed=Math.min(amt,tp);const ipUsed=amt-tpUsed;
+  const costDesc=tpUsed&&ipUsed?`${tpUsed} TP + ${ipUsed} IP`:tpUsed?`${tpUsed} TP`:`${ipUsed} IP`;
+  if(!confirm(`Raise all burnout caps by ${amt}?\nCost: ${costDesc}`))return;
+  try{const r=await api("invest_burnout_upgrade",{amount:amt});ISTATE.burnout_upgrades=r.burnout_upgrades;await loadInvestiture();toast("Burnout caps raised by "+amt+"!");}catch(e){toast("Error: "+e.message);}
 }
 async function adjustCharges(skillId,delta,maxCharges){
   const skill=(ISTATE.skills||[]).find(s=>s.id===skillId);if(!skill)return;
@@ -2421,20 +2432,18 @@ async function openPlayerNotes(c){
 // --- DM: PREVIEW ---
 async function openPreviewPicker(){
   const mb=document.getElementById("modalBg"),m=document.getElementById("modal");
-  m.innerHTML=`<h3>Preview As Player</h3><div class="msub">See the tracker exactly as a player sees it.</div>
+  m.innerHTML=`<h3>View As Player</h3><div class="msub">Opens a new tab logged in as that player.</div>
     <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
-    ${players.map(p=>`<button class="mini-btn" style="text-align:left;padding:9px 12px" onclick="startPreview('${p.id}',${jsonAttr(p.character_name)})">${esc(p.character_name)} <span style="color:var(--txt-faint);font-size:.78rem">⚔${p.honor_score??0} honor</span></button>`).join('')}
+    ${players.map(p=>`<button class="mini-btn" style="text-align:left;padding:9px 12px" onclick="startImpersonate('${p.id}',${jsonAttr(p.character_name)})">${esc(p.character_name)} <span style="color:var(--txt-faint);font-size:.78rem">⚔${p.honor_score??0} honor</span></button>`).join('')}
     </div>
     <div class="modal-actions"><button class="mini-btn" onclick="document.getElementById('modalBg').classList.remove('open')">Cancel</button></div>`;
   mb.classList.add("open");
 }
-async function startPreview(targetId,targetName){
-  document.getElementById("modalBg").classList.remove("open");toast(`Previewing as ${targetName}…`);
+async function startImpersonate(targetId,targetName){
+  document.getElementById("modalBg").classList.remove("open");toast(`Opening tab as ${targetName}…`);
   try{
-    const r=await api("preview_as_player",{target_account_id:targetId});
-    previewMode={name:r.previewing_as,honor_score:r.honor_score??0};
-    STATE.npcs=r.npcs||[];STATE.scores=r.scores||{};STATE.notes=r.notes||{};STATE.honor_score=r.honor_score??0;
-    closeSide();buildGroupFilter();render();updateWhoami(r.previewing_as);switchTab("honor");
+    const r=await api("dm_impersonate",{target_account_id:targetId});
+    window.open(location.pathname+"?imp_token="+encodeURIComponent(r.token),"_blank");
   }catch(e){toast("Error: "+e.message);}
 }
 // --- NPC EDITOR ---
