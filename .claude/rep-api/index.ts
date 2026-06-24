@@ -300,19 +300,21 @@ Deno.serve(async (req) => {
       return json({ ok: true, current_charges: val });
     }
     if (action === "invest_burnout_upgrade") {
+      const amt = Math.max(1, parseInt(payload.amount) || 1);
       const state = await getPlayerInvestiture(me.id);
       const hasSignets = state.skills.some((s: any) => s.skill_type === "signet");
       if (!hasSignets) return json({ error: "You need a signet to upgrade burnout caps" }, 400);
       const totalAvail = state.available_points + state.training_points;
-      if (totalAvail < 1) return json({ error: "Not enough points" }, 400);
+      if (totalAvail < amt) return json({ error: "Not enough points" }, 400);
       const pool = state.pool;
       const curUpgrades = pool.burnout_upgrades ?? 0;
-      if (state.training_points > 0) {
-        await admin.from("player_investiture").update({ burnout_upgrades: curUpgrades + 1, training_points: state.training_points - 1 }).eq("account_id", me.id);
-      } else {
-        await admin.from("player_investiture").update({ burnout_upgrades: curUpgrades + 1, total_points: pool.total_points - 1 }).eq("account_id", me.id);
-      }
-      return json({ ok: true, burnout_upgrades: curUpgrades + 1 });
+      const tpUsed = Math.min(amt, state.training_points);
+      const ipUsed = amt - tpUsed;
+      const upd: any = { burnout_upgrades: curUpgrades + amt };
+      if (tpUsed > 0) upd.training_points = state.training_points - tpUsed;
+      if (ipUsed > 0) upd.total_points = pool.total_points - ipUsed;
+      await admin.from("player_investiture").update(upd).eq("account_id", me.id);
+      return json({ ok: true, burnout_upgrades: curUpgrades + amt });
     }
 
     // --- DM ONLY BELOW ---
@@ -334,6 +336,15 @@ Deno.serve(async (req) => {
     }
 
     if (!me.is_dm) return json({ error: "DM only" }, 403);
+
+    if (action === "dm_impersonate") {
+      const { target_account_id } = payload;
+      const { data: tAcct } = await admin.from("rep_accounts").select("id,character_name").eq("id", target_account_id).maybeSingle();
+      if (!tAcct) return json({ error: "Not found" }, 404);
+      const tk = newToken();
+      await admin.from("rep_sessions").insert({ token: tk, account_id: (tAcct as any).id });
+      return json({ ok: true, token: tk, character_name: (tAcct as any).character_name });
+    }
 
     // --- NPC / REPUTATION ---
     if (action === "set_score") {
