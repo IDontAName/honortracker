@@ -595,7 +595,7 @@ html.theme-parchment{
         <div class="ip-card avail"><div class="ip-num" id="ipAvail">—</div><div class="ip-lbl">Available IP</div></div>
         <div class="ip-card"><div class="ip-num" id="ipTotal">—</div><div class="ip-lbl">Total Earned</div></div>
         <div class="ip-card spent"><div class="ip-num" id="ipSpent">—</div><div class="ip-lbl">Invested</div></div>
-        <div class="ip-card training" id="ipTrainingCard" style="display:none"><div class="ip-num" id="ipTraining">0</div><div class="ip-lbl">Training Pts</div></div>
+        <div class="ip-card training" id="ipTrainingCard" style="display:none" title="Training Points — granted by DM. Can only be spent on signets or raising burnout caps. Used before regular IP."><div class="ip-num" id="ipTraining">0</div><div class="ip-lbl">Training Pts</div></div>
       </div>
       <div style="flex:1;min-width:200px">
         <div class="ip-level">Level: <b id="ipLevel">—</b></div>
@@ -1656,7 +1656,7 @@ function openInvestModal(type,id,name,suggestedAmt,upgradeKey,upgradeName){
   const skill=(ISTATE.skills||[]).find(s=>s.id===id);
   const isSignet=skill&&skill.skill_type==="signet";
   const totalAvail=isSignet?avail+tp:avail;
-  const tpNote=isSignet&&tp>0?`<div style="margin-bottom:8px;color:#c084fc;font-size:.82rem">Training Points: <b>${tp}</b> (auto-deducted first for signets)</div>`:"";
+  const tpNote=isSignet&&tp>0?`<div style="margin-bottom:8px;color:#c084fc;font-size:.82rem">Training Points: <b>${tp}</b> (used first for signets &amp; burnout caps)</div>`:"";
   m.innerHTML=`<h3>Invest Points</h3>
     <div class="msub">Allocating into: <b>${esc(name)}</b></div>
     <div style="margin-bottom:10px;color:var(--txt-dim);font-size:.88rem">Available Investiture Points: <b style="color:var(--pos-bright);font-family:'Cinzel',serif">${avail}</b></div>
@@ -1856,7 +1856,7 @@ async function renderDmCombat(c){
     html+=`</div>
       <div style="margin-top:20px;border-top:1px solid var(--edge);padding-top:16px">
         <h3 style="font-size:.9rem;color:var(--gold);margin-bottom:10px">Grant Training Points</h3>
-        <p style="color:var(--txt-faint);font-size:.78rem;margin-bottom:10px;font-style:italic">Training points can only be spent on signets.</p>
+        <p style="color:var(--txt-faint);font-size:.78rem;margin-bottom:10px;font-style:italic">Training points can only be spent on signets or raising burnout caps. Used before regular IP.</p>
         <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
           <div class="lfield" style="margin:0"><label>Player</label><select id="tpPlayer" style="padding:8px;background:var(--ink);border:1px solid var(--edge);border-radius:var(--rad);color:var(--txt);font-size:.86rem">${players.map(p=>`<option value="${p.account_id}">${esc(p.character_name)}</option>`).join("")}</select></div>
           <div class="lfield" style="margin:0"><label>Amount</label><input type="number" id="tpAmount" value="1" min="1" style="width:70px;padding:8px;background:var(--ink);border:1px solid var(--edge);border-radius:var(--rad);color:var(--txt);font-size:.86rem;text-align:center"/></div>
@@ -2287,7 +2287,7 @@ async function loadAccountList(el){
       <tbody>${accounts.map(a=>`<tr>
         <td>${esc(a.character_name)}</td>
         <td>${a.is_dm?'<span class="badge-dm">DM</span>':'Player'}</td>
-        <td style="font-family:monospace;font-size:.78rem;color:var(--txt-dim)">${a.password_plain?esc(a.password_plain):'<span style="opacity:.4">unknown</span>'}</td>
+        <td style="font-family:monospace;font-size:.78rem;color:var(--txt-dim)">${a.password_plain?esc(a.password_plain):'<span style="opacity:.5;cursor:pointer;text-decoration:underline" onclick="openEditAccount(\''+a.id+'\','+jsonAttr(a.character_name)+','+a.is_dm+','+(a.honor_score??0)+')">set password</span>'}</td>
         <td><span class="honor-chip" style="cursor:default">⚔ ${a.honor_score??0}</span></td>
         <td style="display:flex;gap:5px;flex-wrap:wrap">
           <button class="mini-btn" onclick="openEditAccount('${a.id}',${jsonAttr(a.character_name)},${a.is_dm},${a.honor_score??0})">Edit</button>
