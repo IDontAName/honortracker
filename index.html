@@ -257,7 +257,8 @@ textarea.notes:focus{outline:none;border-color:var(--gold-dim)}
 .invest-body{padding:18px 22px 80px;display:flex;flex-direction:column;gap:24px}
 .invest-section-head{font-family:'Cinzel',serif;font-size:.95rem;color:var(--gold);font-weight:600;margin-bottom:12px;padding-bottom:5px;border-bottom:1px solid var(--edge);display:flex;align-items:center;gap:8px}
 .invest-section-head span{font-size:.66rem;color:var(--txt-faint);font-style:italic;font-family:'EB Garamond',serif;font-weight:400}
-.skill-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:10px}
+.skill-grid{display:flex;flex-wrap:wrap;gap:10px;max-height:calc(100vh - 180px);overflow-x:auto;overflow-y:hidden;flex-direction:column;align-content:flex-start;padding-bottom:6px}
+.skill-grid .skill-card{width:380px;max-width:calc(100vw - 60px);flex:0 0 auto}
 .skill-card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--edge);border-radius:var(--rad);overflow:hidden;transition:border-color .18s}
 .skill-card:hover{border-color:var(--edge2)}
 .skill-card.mastered{border-color:rgba(201,162,75,.3)}
@@ -1432,7 +1433,7 @@ function renderInvestiture(){
     html+=`<div><div class="invest-section-head">Signets <span>Invest points into individual signet abilities.</span></div>
       <div class="skill-grid">${signetSkills.map(s=>renderSignetCard(s)).join("")}</div></div>`;
     const bc=getBurnoutCaps();const bu=ISTATE.burnout_upgrades||0;
-    html+=`<div class="skill-card" style="max-width:600px;margin-top:12px">
+    html+=`<div class="skill-card" style="margin-top:12px;width:600px;max-width:100%">
       <div class="skill-card-head"><div class="skill-icon">🔥</div><div class="skill-title"><div class="skill-name">Burnout Reference</div>${bu>0?`<div class="skill-sub" style="color:var(--gold)">${bu} pts invested — Caps: ${bc.risk}/${bc.high}/${bc.complete}</div>`:`<div class="skill-sub">Caps: ${bc.risk}/${bc.high}/${bc.complete}</div>`}</div></div>
       <div class="skill-body" style="font-size:.78rem;line-height:1.5;color:var(--txt-dim)">
         <div style="margin-bottom:8px">All Signets have the same Burnout Thresholds, though some Signets may expend more Burnout Points than others.</div>
@@ -1441,7 +1442,7 @@ function renderInvestiture(){
         <div style="margin-bottom:6px"><b style="color:#fff">${bc.complete} Burnout Points — Complete Burnout:</b><br>- You die. Nothing can bring you back, not even a Shard</div>
         <div style="border-top:1px dotted var(--edge);padding-top:6px;margin-top:8px"><b style="color:var(--parch)">Recovery:</b><br>- Short rest: reduce burnout by 20% of your Burnout Risk cap<br>- Long rest: reduce burnout by 80% of your Burnout Risk cap</div>
         <div style="border-top:1px dotted var(--edge);padding-top:6px;margin-top:8px"><b style="color:var(--parch)">Raise Caps:</b> Spend Training Points (or IP) to raise all 3 thresholds. TP is used first.<br>
-        <button class="mini-btn go" style="margin-top:6px" onclick="investBurnoutUpgrade()">Raise Caps — 1 pt each</button></div>
+        <div style="display:flex;gap:5px;margin-top:6px;flex-wrap:wrap"><button class="mini-btn go" onclick="investBurnoutUpgrade(1)">+1</button><button class="mini-btn go" onclick="investBurnoutUpgrade(5)">+5</button><button class="mini-btn go" onclick="investBurnoutUpgrade(10)">+10</button><button class="mini-btn" onclick="investBurnoutUpgrade()">Custom…</button></div></div>
       </div>
     </div>`;
   }
@@ -1656,16 +1657,17 @@ function openInvestModal(type,id,name,suggestedAmt,upgradeKey,upgradeName){
   const skill=(ISTATE.skills||[]).find(s=>s.id===id);
   const isSignet=skill&&skill.skill_type==="signet";
   const totalAvail=isSignet?avail+tp:avail;
-  const tpNote=isSignet&&tp>0?`<div style="margin-bottom:8px;color:#c084fc;font-size:.82rem">Training Points: <b>${tp}</b> (used first for signets &amp; burnout caps)</div>`:"";
+  const quickAmts=[1,5,10].filter(a=>a<=totalAvail);
   m.innerHTML=`<h3>Invest Points</h3>
     <div class="msub">Allocating into: <b>${esc(name)}</b></div>
-    <div style="margin-bottom:10px;color:var(--txt-dim);font-size:.88rem">Available Investiture Points: <b style="color:var(--pos-bright);font-family:'Cinzel',serif">${avail}</b></div>
-    ${tpNote}
+    <div style="margin-bottom:6px;color:var(--txt-dim);font-size:.88rem">Available IP: <b style="color:var(--pos-bright);font-family:'Cinzel',serif">${avail}</b>${isSignet&&tp>0?` &nbsp;|&nbsp; Training Pts: <b style="color:#c084fc;font-family:'Cinzel',serif">${tp}</b>`:''}</div>
+    ${isSignet&&tp>0?`<div style="margin-bottom:8px;color:#c084fc;font-size:.78rem;font-style:italic">TP is used first for signets &amp; burnout caps.</div>`:''}
     <div style="display:flex;align-items:center;gap:10px;margin:12px 0">
-      <label style="font-size:.66rem;text-transform:uppercase;letter-spacing:.12em;color:var(--gold-dim);font-family:'Cinzel',serif">Points to invest:</label>
+      <label style="font-size:.66rem;text-transform:uppercase;letter-spacing:.12em;color:var(--gold-dim);font-family:'Cinzel',serif">Amount:</label>
       <input type="number" id="imAmt" min="1" max="${totalAvail}" value="${Math.min(suggestedAmt||1,totalAvail)}" style="width:72px;padding:8px;background:var(--ink);border:1px solid var(--edge);border-radius:var(--rad);color:var(--txt);font-size:1rem;text-align:center;font-family:'Cinzel',serif"/>
+      <div style="display:flex;gap:4px">${quickAmts.map(a=>`<button class="mini-btn" style="padding:4px 10px;font-size:.78rem" onclick="document.getElementById('imAmt').value=${a}">+${a}</button>`).join('')}</div>
     </div>
-    <div id="imNote" style="font-size:.8rem;color:var(--txt-dim);font-style:italic;margin-bottom:6px">Points are permanently locked in this skill. Only the DM can refund them.</div>
+    <div style="font-size:.8rem;color:var(--txt-dim);font-style:italic;margin-bottom:6px">Points are permanently locked. Only the DM can refund them.</div>
     <div class="modal-actions">
       <button class="mini-btn" onclick="document.getElementById('modalBg').classList.remove('open')">Cancel</button>
       <button class="mini-btn go" onclick="confirmInvest()">Confirm Invest</button>
@@ -1734,18 +1736,37 @@ async function setBurnoutManual(){
   const nv=Math.max(0,parseInt(val)||0);
   try{await api("update_burnout",{value:nv});ISTATE.burnout_current=nv;updateBurnoutUI(nv);toast("Burnout set to "+nv);}catch(e){toast("Error: "+e.message);}
 }
-async function investBurnoutUpgrade(){
+function investBurnoutUpgrade(presetAmt){
   const tp=ISTATE.training_points||0;const ap=ISTATE.available_points||0;
   const maxAfford=tp+ap;
   if(maxAfford<1){toast("Not enough points");return;}
-  const input=prompt(`Raise all burnout caps by how much?\nYou can afford up to ${maxAfford} (${tp} TP + ${ap} IP).\nTraining points are used first.`,"1");
-  if(input===null)return;
-  const amt=Math.max(1,parseInt(input)||1);
-  if(amt>maxAfford){toast("Not enough points (max "+maxAfford+")");return;}
+  const mb=document.getElementById("modalBg"),m=document.getElementById("modal");
+  const bc=getBurnoutCaps();
+  const quickAmts=[1,5,10].filter(a=>a<=maxAfford);
+  m.innerHTML=`<h3>Raise Burnout Caps</h3>
+    <div class="msub">All 3 thresholds raised by the same amount.</div>
+    <div style="margin-bottom:6px;color:var(--txt-dim);font-size:.88rem">Available IP: <b style="color:var(--pos-bright);font-family:'Cinzel',serif">${ap}</b>${tp>0?` &nbsp;|&nbsp; Training Pts: <b style="color:#c084fc;font-family:'Cinzel',serif">${tp}</b>`:''}</div>
+    ${tp>0?`<div style="margin-bottom:8px;color:#c084fc;font-size:.78rem;font-style:italic">TP is used first.</div>`:''}
+    <div style="margin-bottom:8px;font-size:.82rem;color:var(--txt-dim)">Current caps: <b style="color:var(--gold)">${bc.risk}</b> / <b style="color:var(--blood-bright)">${bc.high}</b> / <b style="color:#fff">${bc.complete}</b></div>
+    <div style="display:flex;align-items:center;gap:10px;margin:12px 0">
+      <label style="font-size:.66rem;text-transform:uppercase;letter-spacing:.12em;color:var(--gold-dim);font-family:'Cinzel',serif">Amount:</label>
+      <input type="number" id="burnCapAmt" min="1" max="${maxAfford}" value="${Math.min(presetAmt||1,maxAfford)}" style="width:72px;padding:8px;background:var(--ink);border:1px solid var(--edge);border-radius:var(--rad);color:var(--txt);font-size:1rem;text-align:center;font-family:'Cinzel',serif"/>
+      <div style="display:flex;gap:4px">${quickAmts.map(a=>`<button class="mini-btn" style="padding:4px 10px;font-size:.78rem" onclick="document.getElementById('burnCapAmt').value=${a}">+${a}</button>`).join('')}</div>
+    </div>
+    <div class="modal-actions">
+      <button class="mini-btn" onclick="document.getElementById('modalBg').classList.remove('open')">Cancel</button>
+      <button class="mini-btn go" onclick="confirmBurnoutUpgrade()">Confirm</button>
+    </div>`;
+  mb.classList.add("open");
+}
+async function confirmBurnoutUpgrade(){
+  const amt=parseInt(document.getElementById("burnCapAmt").value);
+  if(isNaN(amt)||amt<1){toast("Invalid amount");return;}
+  const tp=ISTATE.training_points||0;
   const tpUsed=Math.min(amt,tp);const ipUsed=amt-tpUsed;
   const costDesc=tpUsed&&ipUsed?`${tpUsed} TP + ${ipUsed} IP`:tpUsed?`${tpUsed} TP`:`${ipUsed} IP`;
-  if(!confirm(`Raise all burnout caps by ${amt}?\nCost: ${costDesc}`))return;
-  try{const r=await api("invest_burnout_upgrade",{amount:amt});ISTATE.burnout_upgrades=r.burnout_upgrades;await loadInvestiture();toast("Burnout caps raised by "+amt+"!");}catch(e){toast("Error: "+e.message);}
+  if(!confirm(`Raise all caps by ${amt}? Cost: ${costDesc}`))return;
+  try{const r=await api("invest_burnout_upgrade",{amount:amt});ISTATE.burnout_upgrades=r.burnout_upgrades;document.getElementById("modalBg").classList.remove("open");await loadInvestiture();toast("Burnout caps raised by "+amt+"!");}catch(e){toast("Error: "+e.message);}
 }
 async function adjustCharges(skillId,delta,maxCharges){
   const skill=(ISTATE.skills||[]).find(s=>s.id===skillId);if(!skill)return;
@@ -1991,6 +2012,7 @@ async function loadPlayerDetail(pid,el){
             <option value="">Select metal…</option>${metalOpts}
           </select>
           <button class="mini-btn go" onclick="dmGrantSkill('${pid}','allo')">Grant</button>
+          <button class="mini-btn" onclick="dmGrantMistborn('${pid}')" title="Grant all 16 allomantic metals + passive">Mistborn</button>
         </div>
         <div class="pd-section-head" style="margin-top:10px">Grant Signet</div>
         <div class="pd-row" style="flex-wrap:wrap">
@@ -2082,6 +2104,17 @@ async function dmGrantSkill(pid,type){
       toast("Custom item granted");
     }
     await reloadPlayerDetail(pid);
+  }catch(e){toast("Error: "+e.message);}
+}
+async function dmGrantMistborn(pid){
+  if(!confirm("Grant all allomantic metals (Mistborn)? This adds all 16 metals + Passive Metal Control."))return;
+  try{
+    for(const key of Object.keys(METALS)){
+      const m=METALS[key];
+      await api("dm_grant_skill",{target_account_id:pid,skill_type:"allomancy",skill_key:key,skill_name:m.name});
+    }
+    await api("dm_grant_skill",{target_account_id:pid,skill_type:"passive",skill_key:"passives",skill_name:"Passive Metal Control"});
+    toast("Mistborn — all metals granted");await reloadPlayerDetail(pid);
   }catch(e){toast("Error: "+e.message);}
 }
 async function dmToggleMastered(skillId,pid,current){
