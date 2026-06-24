@@ -542,7 +542,7 @@ Deno.serve(async (req) => {
       for (const acct of accts ?? []) {
         const { data: pool } = await admin.from("player_investiture").select("burnout_current, training_points").eq("account_id", (acct as any).id).maybeSingle();
         const { data: skills } = await admin.from("player_skills").select("id, skill_type, skill_key, skill_name, current_charges").eq("account_id", (acct as any).id);
-        const alloSkills = (skills ?? []).filter((s: any) => s.skill_type === "allomancy" && s.current_charges > 0);
+        const alloSkills = (skills ?? []).filter((s: any) => s.skill_type === "allomancy");
         const hasSignets = (skills ?? []).some((s: any) => s.skill_type === "signet");
         result.push({
           account_id: (acct as any).id,
@@ -565,9 +565,9 @@ Deno.serve(async (req) => {
       }
       if (reset_type === "charges" || reset_type === "all") {
         if (target_account_id) {
-          await admin.from("player_skills").update({ current_charges: 0 }).eq("account_id", target_account_id).eq("skill_type", "allomancy");
+          await admin.from("player_skills").update({ current_charges: null }).eq("account_id", target_account_id).eq("skill_type", "allomancy");
         } else {
-          await admin.from("player_skills").update({ current_charges: 0 }).eq("skill_type", "allomancy");
+          await admin.from("player_skills").update({ current_charges: null }).eq("skill_type", "allomancy");
         }
       }
       return json({ ok: true });
