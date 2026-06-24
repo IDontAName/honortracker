@@ -112,6 +112,7 @@ async function getPlayerInvestiture(accountId: string) {
     available_points: regularAvail,
     training_points: trainingPoints,
     burnout_current: pool.burnout_current ?? 0,
+    burnout_upgrades: pool.burnout_upgrades ?? 0,
   };
 }
 
@@ -297,6 +298,21 @@ Deno.serve(async (req) => {
       if (!skill) return json({ error: "Skill not found" }, 404);
       await admin.from("player_skills").update({ current_charges: val }).eq("id", skill_id);
       return json({ ok: true, current_charges: val });
+    }
+    if (action === "invest_burnout_upgrade") {
+      const state = await getPlayerInvestiture(me.id);
+      const hasSignets = state.skills.some((s: any) => s.skill_type === "signet");
+      if (!hasSignets) return json({ error: "You need a signet to upgrade burnout caps" }, 400);
+      const totalAvail = state.available_points + state.training_points;
+      if (totalAvail < 1) return json({ error: "Not enough points" }, 400);
+      const pool = state.pool;
+      const curUpgrades = pool.burnout_upgrades ?? 0;
+      if (state.training_points > 0) {
+        await admin.from("player_investiture").update({ burnout_upgrades: curUpgrades + 1, training_points: state.training_points - 1 }).eq("account_id", me.id);
+      } else {
+        await admin.from("player_investiture").update({ burnout_upgrades: curUpgrades + 1, total_points: pool.total_points - 1 }).eq("account_id", me.id);
+      }
+      return json({ ok: true, burnout_upgrades: curUpgrades + 1 });
     }
 
     // --- DM ONLY BELOW ---
@@ -540,7 +556,7 @@ Deno.serve(async (req) => {
       const { data: accts } = await admin.from("rep_accounts").select("id, character_name").eq("is_dm", false).order("character_name");
       const result = [];
       for (const acct of accts ?? []) {
-        const { data: pool } = await admin.from("player_investiture").select("burnout_current, training_points").eq("account_id", (acct as any).id).maybeSingle();
+        const { data: pool } = await admin.from("player_investiture").select("burnout_current, training_points, burnout_upgrades").eq("account_id", (acct as any).id).maybeSingle();
         const { data: skills } = await admin.from("player_skills").select("id, skill_type, skill_key, skill_name, current_charges").eq("account_id", (acct as any).id);
         const alloSkills = (skills ?? []).filter((s: any) => s.skill_type === "allomancy");
         const hasSignets = (skills ?? []).some((s: any) => s.skill_type === "signet");
@@ -548,6 +564,7 @@ Deno.serve(async (req) => {
           account_id: (acct as any).id,
           character_name: (acct as any).character_name,
           burnout_current: (pool as any)?.burnout_current ?? 0,
+          burnout_upgrades: (pool as any)?.burnout_upgrades ?? 0,
           has_signets: hasSignets,
           metal_charges: alloSkills.map((s: any) => ({ skill_id: s.id, skill_key: s.skill_key, skill_name: s.skill_name, current_charges: s.current_charges })),
         });

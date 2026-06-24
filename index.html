@@ -602,7 +602,7 @@ html.theme-parchment{
         <div id="burnoutDisplay" style="display:none;margin-top:8px">
           <div class="burnout-bar-wrap">
             <div class="burnout-label">Burnout: <b id="burnoutVal">0</b><span id="burnoutStatus"></span></div>
-            <div class="burnout-bar"><div class="burnout-fill" id="burnoutFill"></div><div class="burnout-mark risk" style="left:66.7%"></div><div class="burnout-mark-label risk" style="left:66.7%">50</div><div class="burnout-mark high" style="left:86.7%"></div><div class="burnout-mark-label high" style="left:86.7%">65</div><div class="burnout-mark complete" style="left:100%"></div><div class="burnout-mark-label complete" style="left:100%">75</div></div>
+            <div class="burnout-bar" id="burnoutBar"><div class="burnout-fill" id="burnoutFill"></div></div>
             <div class="burnout-controls">
               <button class="mini-btn" onclick="adjustBurnout(-1)">-1</button>
               <button class="mini-btn" onclick="adjustBurnout(-5)">-5</button>
@@ -1426,14 +1426,17 @@ function renderInvestiture(){
   if(signetSkills.length){
     html+=`<div><div class="invest-section-head">Signets <span>Invest points into individual signet abilities.</span></div>
       <div class="skill-grid">${signetSkills.map(s=>renderSignetCard(s)).join("")}</div></div>`;
+    const bc=getBurnoutCaps();const bu=ISTATE.burnout_upgrades||0;
     html+=`<div class="skill-card" style="max-width:600px;margin-top:12px">
-      <div class="skill-card-head"><div class="skill-icon">🔥</div><div class="skill-title"><div class="skill-name">Burnout Reference</div></div></div>
+      <div class="skill-card-head"><div class="skill-icon">🔥</div><div class="skill-title"><div class="skill-name">Burnout Reference</div>${bu>0?`<div class="skill-sub" style="color:var(--gold)">Caps raised +${bu}</div>`:""}</div></div>
       <div class="skill-body" style="font-size:.78rem;line-height:1.5;color:var(--txt-dim)">
         <div style="margin-bottom:8px">All Signets have the same Burnout Thresholds, though some Signets may expend more Burnout Points than others.</div>
-        <div style="margin-bottom:6px"><b style="color:var(--gold)">50 Burnout Points — Burnout Risk:</b><br>- All damage dealt to you is doubled, which bypasses resistances. Immunity causes damage to be normal instead<br>- You automatically fail all saving throws</div>
-        <div style="margin-bottom:6px"><b style="color:var(--blood-bright)">65 Burnout Points — High Burnout:</b><br>- All effects of Burnout Risk<br>- You cannot receive any healing from any source<br>- Every time you wield you take damage equal to 20% your max hp, which cannot be transferred or reduced<br>- Effects that prevent you from dying at 0 hitpoints that are not Invested do not function<br>- If you die, you simply die without death saves</div>
-        <div style="margin-bottom:6px"><b style="color:#fff">75 Burnout Points — Complete Burnout:</b><br>- You die. Nothing can bring you back, not even a Shard</div>
+        <div style="margin-bottom:6px"><b style="color:var(--gold)">${bc.risk} Burnout Points — Burnout Risk:</b><br>- All damage dealt to you is doubled, which bypasses resistances. Immunity causes damage to be normal instead<br>- You automatically fail all saving throws</div>
+        <div style="margin-bottom:6px"><b style="color:var(--blood-bright)">${bc.high} Burnout Points — High Burnout:</b><br>- All effects of Burnout Risk<br>- You cannot receive any healing from any source<br>- Every time you wield you take damage equal to 20% your max hp, which cannot be transferred or reduced<br>- Effects that prevent you from dying at 0 hitpoints that are not Invested do not function<br>- If you die, you simply die without death saves</div>
+        <div style="margin-bottom:6px"><b style="color:#fff">${bc.complete} Burnout Points — Complete Burnout:</b><br>- You die. Nothing can bring you back, not even a Shard</div>
         <div style="border-top:1px dotted var(--edge);padding-top:6px;margin-top:8px"><b style="color:var(--parch)">Recovery:</b><br>- Short rest: reduce burnout by 20% of your Burnout Risk cap<br>- Long rest: reduce burnout by 80% of your Burnout Risk cap</div>
+        <div style="border-top:1px dotted var(--edge);padding-top:6px;margin-top:8px"><b style="color:var(--parch)">Raise Caps:</b> Spend 1 Training Point (or 1 IP) to raise all 3 thresholds by 1.<br>
+        <button class="mini-btn go" style="margin-top:6px" onclick="investBurnoutUpgrade()">Raise Caps (+1) — Cost: 1 pt</button></div>
       </div>
     </div>`;
   }
@@ -1693,17 +1696,27 @@ async function showIpLog(){
     <div class="modal-actions"><button class="mini-btn go" onclick="document.getElementById('modalBg').classList.remove('open')">Close</button></div>`;
   mb.classList.add("open");
 }
+function getBurnoutCaps(){
+  const u=ISTATE.burnout_upgrades||0;
+  return {risk:50+u,high:65+u,complete:75+u};
+}
 function updateBurnoutUI(val){
+  const caps=getBurnoutCaps();
   document.getElementById("burnoutVal").textContent=val;
-  const pct=Math.min(val/75*100,100);
+  const pct=Math.min(val/caps.complete*100,100);
   const fill=document.getElementById("burnoutFill");
   fill.style.width=pct+"%";
-  fill.style.background=val>=75?"#fff":val>=65?"var(--blood-bright)":val>=50?"var(--gold)":"var(--pos)";
+  fill.style.background=val>=caps.complete?"#fff":val>=caps.high?"var(--blood-bright)":val>=caps.risk?"var(--gold)":"var(--pos)";
   const status=document.getElementById("burnoutStatus");
-  if(val>=75){status.innerHTML='<span class="burnout-status-complete"> COMPLETE</span>';}
-  else if(val>=65){status.innerHTML='<span class="burnout-status-high"> HIGH RISK</span>';}
-  else if(val>=50){status.innerHTML='<span class="burnout-status-risk"> AT RISK</span>';}
+  if(val>=caps.complete){status.innerHTML='<span class="burnout-status-complete"> COMPLETE</span>';}
+  else if(val>=caps.high){status.innerHTML='<span class="burnout-status-high"> HIGH RISK</span>';}
+  else if(val>=caps.risk){status.innerHTML='<span class="burnout-status-risk"> AT RISK</span>';}
   else{status.innerHTML="";}
+  const bar=document.getElementById("burnoutBar");
+  bar.querySelectorAll(".burnout-mark,.burnout-mark-label").forEach(e=>e.remove());
+  const rPct=(caps.risk/caps.complete*100).toFixed(1);
+  const hPct=(caps.high/caps.complete*100).toFixed(1);
+  bar.insertAdjacentHTML("beforeend",`<div class="burnout-mark risk" style="left:${rPct}%"></div><div class="burnout-mark-label risk" style="left:${rPct}%">${caps.risk}</div><div class="burnout-mark high" style="left:${hPct}%"></div><div class="burnout-mark-label high" style="left:${hPct}%">${caps.high}</div><div class="burnout-mark complete" style="left:100%"></div><div class="burnout-mark-label complete" style="left:100%">${caps.complete}</div>`);
 }
 async function adjustBurnout(delta){
   const cur=ISTATE.burnout_current||0;
@@ -1715,6 +1728,13 @@ async function setBurnoutManual(){
   if(val===null)return;
   const nv=Math.max(0,parseInt(val)||0);
   try{await api("update_burnout",{value:nv});ISTATE.burnout_current=nv;updateBurnoutUI(nv);toast("Burnout set to "+nv);}catch(e){toast("Error: "+e.message);}
+}
+async function investBurnoutUpgrade(){
+  const tp=ISTATE.training_points||0;const ap=ISTATE.available_points||0;
+  if(tp+ap<1){toast("Not enough points");return;}
+  const src=tp>0?"1 Training Point":"1 IP";
+  if(!confirm(`Raise all burnout caps by 1?\nCost: ${src}`))return;
+  try{const r=await api("invest_burnout_upgrade",{});ISTATE.burnout_upgrades=r.burnout_upgrades;await loadInvestiture();toast("Burnout caps raised!");}catch(e){toast("Error: "+e.message);}
 }
 async function adjustCharges(skillId,delta,maxCharges){
   const skill=(ISTATE.skills||[]).find(s=>s.id===skillId);if(!skill)return;
@@ -1794,10 +1814,11 @@ async function renderDmCombat(c){
       </div>
       <div class="combat-summary">`;
     for(const p of players){
+      const bu=p.burnout_upgrades||0;const bRisk=50+bu;const bHigh=65+bu;const bComp=75+bu;
       const burnout=p.burnout_current||0;
-      const burnoutPct=Math.min(burnout/75*100,100);
-      const burnoutColor=burnout>=75?"#fff":burnout>=65?"var(--blood-bright)":burnout>=50?"var(--gold)":"var(--pos)";
-      const burnoutLabel=burnout>=75?"COMPLETE":burnout>=65?"HIGH RISK":burnout>=50?"AT RISK":"OK";
+      const burnoutPct=Math.min(burnout/bComp*100,100);
+      const burnoutColor=burnout>=bComp?"#fff":burnout>=bHigh?"var(--blood-bright)":burnout>=bRisk?"var(--gold)":"var(--pos)";
+      const burnoutLabel=burnout>=bComp?"COMPLETE":burnout>=bHigh?"HIGH RISK":burnout>=bRisk?"AT RISK":"OK";
       let chargesHTML="";
       if(p.metal_charges&&p.metal_charges.length){
         chargesHTML=p.metal_charges.map(mc=>{
