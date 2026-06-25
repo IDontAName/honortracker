@@ -114,6 +114,9 @@ async function getPlayerInvestiture(accountId: string) {
     training_points: trainingPoints,
     burnout_current: pool.burnout_current ?? 0,
     burnout_upgrades: pool.burnout_upgrades ?? 0,
+    investiture_score: pool.investiture_score ?? 10,
+    reaction_count: pool.reaction_count ?? 1,
+    action_state: pool.action_state ?? {},
   };
 }
 
@@ -221,6 +224,10 @@ Deno.serve(async (req) => {
         }
       }
       await admin.from("player_skills").update({ points_invested: skill.points_invested + pts }).eq("id", skill_id);
+      await admin.from("dm_console_log").insert({
+        account_id: me.id, character_name: me.character_name,
+        event_type: "invest", details: `Invested ${pts} IP into ${skill.skill_name} (${skill.points_invested}→${skill.points_invested + pts})`,
+      });
       return json({ ok: true, new_total: skill.points_invested + pts });
     }
     if (action === "invest_upgrade") {
@@ -249,6 +256,10 @@ Deno.serve(async (req) => {
         await admin.from("player_skill_upgrades").insert({ skill_id, upgrade_key, upgrade_name: upgrade_name || upgrade_key, points_invested: pts });
       }
       await admin.from("player_skills").update({ points_invested: skill.points_invested + pts }).eq("id", skill_id);
+      await admin.from("dm_console_log").insert({
+        account_id: me.id, character_name: me.character_name,
+        event_type: "invest", details: `Invested ${pts} IP into ${skill.skill_name} upgrade: ${upgrade_name || upgrade_key}`,
+      });
       return json({ ok: true });
     }
     if (action === "invest_set_item") {
@@ -263,6 +274,10 @@ Deno.serve(async (req) => {
       const state = await getPlayerInvestiture(me.id);
       if (state.available_points < pts) return json({ error: "Not enough Investiture Points" }, 400);
       await admin.from("player_set_items").update({ points_invested: si.points_invested + pts }).eq("id", set_item_id);
+      await admin.from("dm_console_log").insert({
+        account_id: me.id, character_name: me.character_name,
+        event_type: "invest", details: `Invested ${pts} IP into set item: ${si.item_name} (${si.points_invested}→${si.points_invested + pts})`,
+      });
       return json({ ok: true, new_total: si.points_invested + pts });
     }
 
@@ -314,6 +329,10 @@ Deno.serve(async (req) => {
       const upd: any = { burnout_upgrades: curUpgrades + amt };
       if (tpUsed > 0) upd.training_points = state.training_points - tpUsed;
       await admin.from("player_investiture").update(upd).eq("account_id", me.id);
+      await admin.from("dm_console_log").insert({
+        account_id: me.id, character_name: me.character_name,
+        event_type: "invest", details: `Upgraded burnout cap by ${amt} (${curUpgrades}→${curUpgrades + amt})`,
+      });
       return json({ ok: true, burnout_upgrades: curUpgrades + amt });
     }
 
@@ -790,6 +809,138 @@ Deno.serve(async (req) => {
       await admin.from("custom_investable_items").delete().eq("id", payload.id);
       return json({ ok: true });
     }
+    // ACTION ECONOMY
+    if (action === "get_action_state") {
+      const { data: pool } = await admin.from("player_investiture")
+        .select("investiture_score, reaction_count, action_state")
+        .eq("account_id", me.id).maybeSingle();
+      return json({
+        investiture_score: (pool as any)?.investiture_score ?? 10,
+        reaction_count: (pool as any)?.reaction_count ?? 1,
+        action_state: (pool as any)?.action_state ?? {},
+      });
+    }
+    if (action === "update_action_state") {
+      const { action_state: newState } = payload;
+      await admin.from("player_investiture")
+        .update({ action_state: newState, updated_at: new Date().toISOString() })
+        .eq("account_id", me.id);
+      // Log to DM console
+      const changed = payload.log_event;
+      if (changed) {
+        await admin.from("dm_console_log").insert({
+          account_id: me.id, character_name: me.character_name,
+          event_type: "action_economy", details: changed,
+        });
+      }
+      return json({ ok: true });
+    }
+    if (action === "drink_vial") {
+      const { skill_id } = payload;
+      const { data: skill } = await admin.from("player_skills")
+        .select("*").eq("id", skill_id).eq("account_id", me.id).maybeSingle();
+      if (!skill) return json({ error: "Skill not found" }, 404);
+      await admin.from("player_skills")
+        .update({ vial_active: true }).eq("id", skill_id);
+      await admin.from("dm_console_log").insert({
+        account_id: me.id, character_name: me.character_name,
+        event_type: "vial_drink",
+        details: `Drank ${(skill as any).skill_name} vial`,
+      });
+      return json({ ok: true });
+    }
+    if (action === "drink_base_vial") {
+      const BASE_METALS = ["aluminum","gold","copper","bronze","zinc","brass","iron","steel","tin","pewter"];
+      const { data: skills } = await admin.from("player_skills")
+        .select("id, skill_key, skill_name")
+        .eq("account_id", me.id).eq("skill_type", "allomancy")
+        .in("skill_key", BASE_METALS);
+      if (skills && skills.length > 0) {
+        const ids = skills.map((s: any) => s.id);
+        await admin.from("player_skills").update({ vial_active: true }).in("id", ids);
+        await admin.from("dm_console_log").insert({
+          account_id: me.id, character_name: me.character_name,
+          event_type: "vial_drink", details: "Drank base 10 vial",
+        });
+      }
+      return json({ ok: true });
+    }
+    if (action === "rest") {
+      const { rest_type } = payload;
+      if (rest_type !== "short" && rest_type !== "long") return json({ error: "Invalid rest type" }, 400);
+      const { data: pool } = await admin.from("player_investiture")
+        .select("burnout_current, burnout_upgrades").eq("account_id", me.id).maybeSingle();
+      if (!pool) return json({ error: "No investiture pool" }, 404);
+      const bu = (pool as any).burnout_upgrades ?? 0;
+      const riskCap = 50 + bu;
+      const burnout = (pool as any).burnout_current ?? 0;
+      const reduction = rest_type === "long" ? Math.floor(riskCap * 0.8) : Math.floor(riskCap * 0.2);
+      const newBurnout = Math.max(0, burnout - reduction);
+      const upd: any = { burnout_current: newBurnout, updated_at: new Date().toISOString() };
+      await admin.from("player_investiture").update(upd).eq("account_id", me.id);
+      if (rest_type === "long") {
+        // Long rest: reset all metal charges to max and lock vials again
+        await admin.from("player_skills")
+          .update({ current_charges: null, vial_active: false })
+          .eq("account_id", me.id).eq("skill_type", "allomancy");
+      }
+      await admin.from("dm_console_log").insert({
+        account_id: me.id, character_name: me.character_name,
+        event_type: "rest",
+        details: `${rest_type === "long" ? "Long" : "Short"} rest — burnout ${burnout}→${newBurnout} (reduced by ${reduction})`,
+      });
+      return json({ ok: true, burnout_before: burnout, burnout_after: newBurnout, reduction });
+    }
+
+    // DM: ACTION ECONOMY & COMBAT PANEL
+    if (action === "dm_set_combat_settings") {
+      if (!me.is_dm) return json({ error: "Not DM" }, 403);
+      const { target_account_id, investiture_score, reaction_count } = payload;
+      const upd: any = {};
+      if (investiture_score !== undefined) upd.investiture_score = Math.max(1, Math.min(30, parseInt(investiture_score)));
+      if (reaction_count !== undefined) upd.reaction_count = Math.max(0, Math.min(10, parseInt(reaction_count)));
+      upd.updated_at = new Date().toISOString();
+      await admin.from("player_investiture").update(upd).eq("account_id", target_account_id);
+      return json({ ok: true });
+    }
+    if (action === "dm_get_action_panel") {
+      if (!me.is_dm) return json({ error: "Not DM" }, 403);
+      const { data: accts } = await admin.from("rep_accounts")
+        .select("id, character_name").eq("is_dm", false).order("character_name");
+      const result = [];
+      for (const acct of accts ?? []) {
+        const { data: pool } = await admin.from("player_investiture")
+          .select("investiture_score, reaction_count, action_state")
+          .eq("account_id", (acct as any).id).maybeSingle();
+        result.push({
+          account_id: (acct as any).id,
+          character_name: (acct as any).character_name,
+          investiture_score: (pool as any)?.investiture_score ?? 10,
+          reaction_count: (pool as any)?.reaction_count ?? 1,
+          action_state: (pool as any)?.action_state ?? {},
+        });
+      }
+      return json({ players: result });
+    }
+    if (action === "dm_new_round") {
+      if (!me.is_dm) return json({ error: "Not DM" }, 403);
+      await admin.from("player_investiture")
+        .update({ action_state: {}, updated_at: new Date().toISOString() })
+        .neq("account_id", "00000000-0000-0000-0000-000000000000");
+      await admin.from("dm_console_log").insert({
+        account_id: me.id, character_name: "DM",
+        event_type: "new_round", details: "New round — all action states reset",
+      });
+      return json({ ok: true });
+    }
+    if (action === "dm_get_console") {
+      if (!me.is_dm) return json({ error: "Not DM" }, 403);
+      const limit = parseInt(payload.limit) || 100;
+      const { data } = await admin.from("dm_console_log")
+        .select("*").order("created_at", { ascending: false }).limit(limit);
+      return json({ logs: data ?? [] });
+    }
+
     return json({ error: "Unknown action: "+action }, 400);
   } catch(e) {
     return json({ error: String(e) }, 500);
