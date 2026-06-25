@@ -255,16 +255,14 @@ textarea.notes:focus{outline:none;border-color:var(--gold-dim)}
 .ip-card.training .ip-num{color:#c084fc}
 .ip-level{color:var(--txt-dim);font-size:.86rem;padding-top:3px}
 .ip-level b{color:var(--parch);font-family:'Cinzel',serif}
-.invest-body{padding:18px 22px 80px;display:flex;flex-direction:column;flex-wrap:wrap;gap:10px;max-height:calc(100vh - 170px);overflow-x:auto;overflow-y:hidden;align-content:flex-start;-webkit-overflow-scrolling:touch}
-.invest-body>.section-head{width:min(380px,calc(100vw - 44px));flex:0 0 auto;font-family:'Cinzel',serif;font-size:.95rem;color:var(--gold);font-weight:600;padding-bottom:5px;border-bottom:1px solid var(--edge);display:flex;align-items:center;gap:8px;margin-top:14px}
-.invest-body>.section-head:first-child{margin-top:0}
-.invest-body>.section-head span{font-size:.66rem;color:var(--txt-faint);font-style:italic;font-family:'EB Garamond',serif;font-weight:400}
-.invest-body>.skill-card{width:min(380px,calc(100vw - 44px));flex:0 0 auto}
+.invest-body{padding:18px 22px 80px;display:flex;flex-direction:column;gap:24px}
+.section-head{font-family:'Cinzel',serif;font-size:.95rem;color:var(--gold);font-weight:600;margin-bottom:12px;padding-bottom:5px;border-bottom:1px solid var(--edge);display:flex;align-items:center;gap:8px}
+.section-head span{font-size:.66rem;color:var(--txt-faint);font-style:italic;font-family:'EB Garamond',serif;font-weight:400}
+.skill-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:10px}
 .skill-card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--edge);border-radius:var(--rad);overflow:hidden;transition:border-color .18s}
 .skill-card:hover{border-color:var(--edge2)}
 .skill-card.mastered{border-color:rgba(201,162,75,.3)}
 .skill-card-head{padding:11px 13px 9px;border-bottom:1px solid var(--edge);display:flex;align-items:flex-start;gap:9px}
-.skill-icon{width:34px;height:34px;flex:0 0 34px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;background:rgba(201,162,75,.1);border:1px solid var(--edge2)}
 .skill-title{flex:1;min-width:0}
 .skill-name{font-family:'Cinzel',serif;font-size:.86rem;color:var(--parch);font-weight:600;line-height:1.2}
 .skill-sub{font-size:.73rem;color:var(--txt-dim);margin-top:1px;font-style:italic}
@@ -525,9 +523,8 @@ html.theme-parchment{
   .fgrid{grid-template-columns:1fr}
   .fgrid .full{grid-column:1}
   .invest-header{flex-direction:column}
-  .invest-body{padding:12px 10px 60px;flex-wrap:nowrap;max-height:none;overflow-x:visible;overflow-y:visible}
-  .invest-body>.skill-card{width:100%}
-  .invest-body>.section-head{width:100%}
+  .invest-body{padding:12px 10px 60px}
+  .skill-grid{grid-template-columns:1fr}
   .ip-pool{flex-wrap:wrap;gap:8px}
   .ip-card{min-width:80px;padding:10px 8px}
 }
@@ -551,14 +548,14 @@ html.theme-parchment{
   <header class="topbar">
     <div class="brand"><div><h1>D&amp;D Hub</h1><small>IDontAName's Campaign</small></div></div>
     <div class="hub-tabs" id="hubTabs">
-      <button class="hub-tab active" data-tab="honor">⚔ Honor Tracker</button>
-      <button class="hub-tab" data-tab="invest">✦ Investiture</button>
-      <button class="hub-tab" data-tab="inbox">✉ Inbox<span class="tab-badge" id="inboxBadge" style="display:none">0</span></button>
-      <button class="hub-tab" id="dmTabBtn" data-tab="dmpanel" style="display:none">⚙ DM Panel</button>
+      <button class="hub-tab active" data-tab="honor">Honor Tracker</button>
+      <button class="hub-tab" data-tab="invest">Player Panel</button>
+      <button class="hub-tab" data-tab="inbox">Inbox<span class="tab-badge" id="inboxBadge" style="display:none">0</span></button>
+      <button class="hub-tab" id="dmTabBtn" data-tab="dmpanel" style="display:none">DM Panel</button>
     </div>
     <div class="topbar-right">
       <span class="whoami" id="whoami"></span>
-      <button class="topbtn" id="themeBtn">🎨 Theme</button>
+      <button class="topbtn" id="themeBtn">Theme</button>
       <button class="topbtn" id="pwBtn">Passphrase</button>
       <button class="topbtn" id="logoutBtn">Logout</button>
     </div>
@@ -1020,7 +1017,7 @@ function updateWhoami(){
     el.innerHTML=`Logged in as <b>${esc(ME.name)}</b><span class="badge-dm">DM</span>`;
   }else{
     const h=ME.honor_score??0;
-    el.innerHTML=`Logged in as <b>${esc(ME.name)}</b><span class="honor-chip" onclick="showHonorExplain()" title="How honor works">⚔ ${h}</span>`;
+    el.innerHTML=`Logged in as <b>${esc(ME.name)}</b><span class="honor-chip" onclick="showHonorExplain()" title="How honor works">${h}</span>`;
   }
 }
 function openChangePw(){
@@ -1178,7 +1175,7 @@ function cardHTML(n){
     <div class="nm">${esc(n.name)}</div>${n.role?`<div class="role">${esc(n.role)}</div>`:''}
     ${pos?`<div class="pos">${esc(pos)}</div>`:''}${n.status?`<span class="status">${esc(n.status)}</span>`:''}
     <div class="rep"><div class="rep-top"><span class="rep-lbl">NPC Regard</span>
-      <span class="rep-val" style="color:${repColor(v)}">${v>0?'+':''}${v} · ${repWord(v)}${hasBonus?` <span class="honor-tag" title="+${v-base} Honor">⚔</span>`:""}</span></div>
+      <span class="rep-val" style="color:${repColor(v)}">${v>0?'+':''}${v} · ${repWord(v)}${hasBonus?` <span class="honor-tag" title="+${v-base} Honor"></span>`:""}</span></div>
     ${repBar(v)}<div class="rep-words"><span>−20</span><span>0</span><span>+20</span></div></div></div>`;
 }
 function portraitCardHTML(n){
@@ -1272,7 +1269,7 @@ function openSide(id){
   if(n.status)rows.push(["Status",n.status]);
   if(n.dragon){const gm=n.dragon.match(/^\(([MFmf])\)/);const gdr=gm?(gm[1].toUpperCase()==='M'?'♂':'♀'):'';const dn=n.dragon_nick||n.dragon.replace(/^\([MFmf]\)\s*/,'').trim();rows.push(["Bonded",`${gdr} ${dn}`.trim()]);}
   const pubNote=n.public_note?`<div class="pubnote"><div class="pubnote-h">Note from the DM</div><div class="pubnote-body">${esc(n.public_note)}</div></div>`:"";
-  const honorNote=(!ME.is_dm&&bonus>0)?`<div class="honor-note">⚔ +${bonus} Honor bonus applied (${STATE.honor_score}/100)</div>`:"";
+  const honorNote=(!ME.is_dm&&bonus>0)?`<div class="honor-note"> +${bonus} Honor bonus applied (${STATE.honor_score}/100)</div>`:"";
   let html=`${portrait}<div class="side-name">${esc(n.name)}${n.easter_egg_url&&n.easter_egg_enabled?` <a class="egg-sigil egg-sigil-side" href="${esc(n.easter_egg_url)}" target="_blank" rel="noopener">✦</a>`:''}</div>
     ${n.role?`<div class="side-role">${esc(n.role)}</div>`:''}
     <div class="rep" style="max-width:260px;margin:14px auto 0">
@@ -1343,14 +1340,14 @@ async function loadDMPlayers(n){
           <div class="pl-val" style="color:${vc}">${baseVal>0?'+':''}${baseVal}</div>
           <button class="pl-step" data-delta="1">+</button>
         </div>
-        ${showBonus?`<div class="pl-honor-sub">⚔ +${hb} honor → effectively ${effective>0?'+':''}${effective}</div>`:''}
+        ${showBonus?`<div class="pl-honor-sub"> +${hb} honor → effectively ${effective>0?'+':''}${effective}</div>`:''}
       </div>`;
     }).join("");
     box.querySelectorAll(".pl-grid").forEach(grid=>{
       const aid=grid.dataset.aid,npcId=grid.dataset.npcid,honor=parseInt(grid.dataset.honor||"0"),hb=Math.round(honor/10);
       const valEl=grid.querySelector(".pl-val");let cur=parseInt(valEl.textContent)||0,t=null;
       const upd=(v)=>{valEl.textContent=(v>0?'+':'')+v;valEl.style.color=repColor(v);let sub=grid.querySelector(".pl-honor-sub");
-        if(v>=0&&v<=10&&hb>0){const eff=applyHonorBonus(v,hb);if(!sub){sub=document.createElement("div");sub.className="pl-honor-sub";grid.appendChild(sub);}sub.textContent=`⚔ +${hb} honor → effectively ${eff>0?'+':''}${eff}`;}else if(sub)sub.remove();};
+        if(v>=0&&v<=10&&hb>0){const eff=applyHonorBonus(v,hb);if(!sub){sub=document.createElement("div");sub.className="pl-honor-sub";grid.appendChild(sub);}sub.textContent=`+${hb} honor → effectively ${eff>0?'+':''}${eff}`;}else if(sub)sub.remove();};
       grid.querySelectorAll(".pl-step").forEach(btn=>btn.addEventListener("click",()=>{
         cur=Math.max(-20,Math.min(20,cur+parseInt(btn.dataset.delta)));upd(cur);
         clearTimeout(t);t=setTimeout(async()=>{try{await api("set_score",{target_account_id:aid,npc_id:npcId,value:cur});}catch(e){toast("save failed");}},300);
@@ -1387,7 +1384,7 @@ function addDMRosterButtons(){
 function showHonorExplain(){
   const mb=document.getElementById("modalBg"),m=document.getElementById("modal");
   const h=STATE.honor_score,bonus=Math.round(h/10);
-  m.innerHTML=`<h3>⚔ Your Honor Score</h3><div class="msub">How the Honor system works</div>
+  m.innerHTML=`<h3>Your Honor Score</h3><div class="msub">How the Honor system works</div>
     <div style="color:var(--parch);font-size:.95rem;line-height:1.7">
       <p>Your current Honor score is <b style="color:var(--gold);font-size:1.15rem">${h}/100</b>.</p>
       <p style="margin-top:10px">Honor Bonus: <code style="background:var(--ink);padding:2px 5px;border-radius:3px">round(${h} ÷ 10) = +${bonus}</code></p>
@@ -1428,15 +1425,15 @@ function renderInvestiture(){
   const customSkills=skills.filter(s=>s.skill_type==="custom");
   let html="";
   if(alloSkills.length){
-    html+=`<div class="section-head">Allomancy <span>T1=1 · T2=+2 · T3=+3 · T4=+4. Mastered: T1 free (max 9).</span></div>`;
-    html+=alloSkills.map(s=>renderAlloCard(s)).join("");
+    html+=`<div><div class="section-head">Allomancy <span>T1=1 · T2=+2 · T3=+3 · T4=+4. Mastered: T1 free (max 9).</span></div>
+      <div class="skill-grid">${alloSkills.map(s=>renderAlloCard(s)).join("")}</div></div>`;
   }
   if(signetSkills.length){
-    html+=`<div class="section-head">Signets <span>Invest points into individual signet abilities.</span></div>`;
-    html+=signetSkills.map(s=>renderSignetCard(s)).join("");
+    html+=`<div><div class="section-head">Signets <span>Invest points into individual signet abilities.</span></div>
+      <div class="skill-grid">${signetSkills.map(s=>renderSignetCard(s)).join("")}</div></div>`;
     const bc=getBurnoutCaps();const bu=ISTATE.burnout_upgrades||0;
-    html+=`<div class="skill-card">
-      <div class="skill-card-head"><div class="skill-icon">🔥</div><div class="skill-title"><div class="skill-name">Burnout Reference</div>${bu>0?`<div class="skill-sub" style="color:var(--gold)">${bu} pts invested — Caps: ${bc.risk}/${bc.high}/${bc.complete}</div>`:`<div class="skill-sub">Caps: ${bc.risk}/${bc.high}/${bc.complete}</div>`}</div></div>
+    html+=`<div class="skill-card" style="margin-top:12px">
+      <div class="skill-card-head"><div class="skill-title"><div class="skill-name">Burnout Reference</div>${bu>0?`<div class="skill-sub" style="color:var(--gold)">${bu} pts invested — Caps: ${bc.risk}/${bc.high}/${bc.complete}</div>`:`<div class="skill-sub">Caps: ${bc.risk}/${bc.high}/${bc.complete}</div>`}</div></div>
       <div class="skill-body" style="font-size:.78rem;line-height:1.5;color:var(--txt-dim)">
         <div style="margin-bottom:8px">All Signets have the same Burnout Thresholds, though some Signets may expend more Burnout Points than others.</div>
         <div style="margin-bottom:6px"><b style="color:var(--gold)">${bc.risk} Burnout Points — Burnout Risk:</b><br>- All damage dealt to you is doubled, which bypasses resistances. Immunity causes damage to be normal instead<br>- You automatically fail all saving throws</div>
@@ -1449,12 +1446,12 @@ function renderInvestiture(){
     </div>`;
   }
   if(customSkills.length){
-    html+=`<div class="section-head">Other <span>Custom investable items granted by the DM.</span></div>`;
-    html+=customSkills.map(s=>renderCustomCard(s)).join("");
+    html+=`<div><div class="section-head">Other <span>Custom investable items granted by the DM.</span></div>
+      <div class="skill-grid">${customSkills.map(s=>renderCustomCard(s)).join("")}</div></div>`;
   }
   if(setItems.length){
-    html+=`<div class="section-head">Set Items <span>Rare=3 · Very Rare=+6 · Legendary=+12 · Artifact=+24.</span></div>`;
-    html+=setItems.map(si=>renderSetItemCard(si)).join("");
+    html+=`<div><div class="section-head">Set Items <span>Rare=3 · Very Rare=+6 · Legendary=+12 · Artifact=+24.</span></div>
+      <div class="skill-grid">${setItems.map(si=>renderSetItemCard(si)).join("")}</div></div>`;
   }
   if(!html)html=`<div class="empty">No investable abilities have been granted yet.<br><span style="font-size:.85rem;opacity:.7">The DM assigns access to metals, signets, and custom items from the DM Panel.</span></div>`;
   body.innerHTML=html;
@@ -1478,7 +1475,6 @@ function toggleSection(el){
 function renderAlloCard(skill){
   const m=METALS[skill.skill_key]||(skill.skill_key==="passives"?PASSIVE_METAL_CONTROL:null);
   const name=m?m.name:skill.skill_name;
-  const icon=m?m.icon:"⚗";
   const nick=m?m.nickname:"";
   const tier=calcAlloTier(skill.points_invested,skill.is_mastered);
   const maxPts=skill.is_mastered?9:10;
@@ -1504,7 +1500,6 @@ function renderAlloCard(skill){
   }
   return `<div class="skill-card${skill.is_mastered?' mastered':''}">
     <div class="skill-card-head">
-      <div class="skill-icon">${icon}</div>
       <div class="skill-title">
         <div class="skill-name">${esc(name)}${skill.is_mastered?`<span class="skill-mastered-badge">Mastered</span>`:''}</div>
         <div class="skill-sub">${esc(nick)}${chargesLabel?' — '+chargesLabel:''}</div>
@@ -1531,7 +1526,6 @@ function signetRankClass(rank){
 function renderSignetCard(skill){
   const s=SIGNETS[skill.skill_key];
   const name=s?s.name:skill.skill_name;
-  const icon=s?s.icon:"✦";
   const upgrades=skill.upgrades||[];
   const upgMap={};upgrades.forEach(u=>{upgMap[u.upgrade_key]=u.points_invested;});
   const signetData=s?s.upgrades:[];
@@ -1576,7 +1570,6 @@ function renderSignetCard(skill){
   }
   return `<div class="skill-card">
     <div class="skill-card-head">
-      <div class="skill-icon">${icon}</div>
       <div class="skill-title">
         <div class="skill-name">${esc(name)}${rankBadge}</div>
       </div>
@@ -1603,7 +1596,6 @@ function renderCustomCard(skill){
   const nextCost=tier<maxTiers?thresholds[tier+1]-pts:0;
   return `<div class="skill-card">
     <div class="skill-card-head">
-      <div class="skill-icon">⚗</div>
       <div class="skill-title">
         <div class="skill-name">${esc(skill.skill_name)}</div>
         ${ci?.description?`<div class="skill-sub">${esc(ci.description.substring(0,70))}${ci.description.length>70?'…':''}</div>`:''}
@@ -2316,7 +2308,7 @@ async function loadAccountList(el){
         <td>${esc(a.character_name)}</td>
         <td>${a.is_dm?'<span class="badge-dm">DM</span>':'Player'}</td>
         <td style="font-family:monospace;font-size:.78rem;color:var(--txt-dim)">${a.password_plain?esc(a.password_plain):'<span style="opacity:.5;cursor:pointer;text-decoration:underline" onclick="openEditAccount(\''+a.id+'\','+jsonAttr(a.character_name)+','+a.is_dm+','+(a.honor_score??0)+')">set password</span>'}</td>
-        <td><span class="honor-chip" style="cursor:default">⚔ ${a.honor_score??0}</span></td>
+        <td><span class="honor-chip" style="cursor:default"> ${a.honor_score??0}</span></td>
         <td style="display:flex;gap:5px;flex-wrap:wrap">
           <button class="mini-btn" onclick="openEditAccount('${a.id}',${jsonAttr(a.character_name)},${a.is_dm},${a.honor_score??0})">Edit</button>
           ${!a.is_dm?`<button class="mini-btn danger" onclick="deleteAccount('${a.id}',${jsonAttr(a.character_name)})">Delete</button>`:''}
@@ -2462,7 +2454,7 @@ async function openPreviewPicker(){
   const mb=document.getElementById("modalBg"),m=document.getElementById("modal");
   m.innerHTML=`<h3>View As Player</h3><div class="msub">Opens a new tab logged in as that player.</div>
     <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
-    ${players.map(p=>`<button class="mini-btn" style="text-align:left;padding:9px 12px" onclick="startImpersonate('${p.id}',${jsonAttr(p.character_name)})">${esc(p.character_name)} <span style="color:var(--txt-faint);font-size:.78rem">⚔${p.honor_score??0} honor</span></button>`).join('')}
+    ${players.map(p=>`<button class="mini-btn" style="text-align:left;padding:9px 12px" onclick="startImpersonate('${p.id}',${jsonAttr(p.character_name)})">${esc(p.character_name)} <span style="color:var(--txt-faint);font-size:.78rem">${p.honor_score??0} honor</span></button>`).join('')}
     </div>
     <div class="modal-actions"><button class="mini-btn" onclick="document.getElementById('modalBg').classList.remove('open')">Cancel</button></div>`;
   mb.classList.add("open");
