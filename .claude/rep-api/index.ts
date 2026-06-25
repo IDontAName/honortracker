@@ -336,6 +336,87 @@ Deno.serve(async (req) => {
       return json({ ok: true, burnout_upgrades: curUpgrades + amt });
     }
 
+    // --- ACTION ECONOMY (player-accessible) ---
+    if (action === "get_action_state") {
+      const { data: pool } = await admin.from("player_investiture")
+        .select("investiture_score, reaction_count, action_state")
+        .eq("account_id", me.id).maybeSingle();
+      return json({
+        investiture_score: (pool as any)?.investiture_score ?? 10,
+        reaction_count: (pool as any)?.reaction_count ?? 1,
+        action_state: (pool as any)?.action_state ?? {},
+      });
+    }
+    if (action === "update_action_state") {
+      const { action_state: newState } = payload;
+      await admin.from("player_investiture")
+        .update({ action_state: newState, updated_at: new Date().toISOString() })
+        .eq("account_id", me.id);
+      const changed = payload.log_event;
+      if (changed) {
+        await admin.from("dm_console_log").insert({
+          account_id: me.id, character_name: me.character_name,
+          event_type: "action_economy", details: changed,
+        });
+      }
+      return json({ ok: true });
+    }
+    if (action === "drink_vial") {
+      const { skill_id } = payload;
+      const { data: skill } = await admin.from("player_skills")
+        .select("*").eq("id", skill_id).eq("account_id", me.id).maybeSingle();
+      if (!skill) return json({ error: "Skill not found" }, 404);
+      await admin.from("player_skills")
+        .update({ vial_active: true }).eq("id", skill_id);
+      await admin.from("dm_console_log").insert({
+        account_id: me.id, character_name: me.character_name,
+        event_type: "vial_drink",
+        details: `Drank ${(skill as any).skill_name} vial`,
+      });
+      return json({ ok: true });
+    }
+    if (action === "drink_base_vial") {
+      const BASE_METALS = ["aluminum","gold","copper","bronze","zinc","brass","iron","steel","tin","pewter"];
+      const { data: skills } = await admin.from("player_skills")
+        .select("id, skill_key, skill_name")
+        .eq("account_id", me.id).eq("skill_type", "allomancy")
+        .in("skill_key", BASE_METALS);
+      if (skills && skills.length > 0) {
+        const ids = skills.map((s: any) => s.id);
+        await admin.from("player_skills").update({ vial_active: true }).in("id", ids);
+        await admin.from("dm_console_log").insert({
+          account_id: me.id, character_name: me.character_name,
+          event_type: "vial_drink", details: "Drank base 10 vial",
+        });
+      }
+      return json({ ok: true });
+    }
+    if (action === "rest") {
+      const { rest_type } = payload;
+      if (rest_type !== "short" && rest_type !== "long") return json({ error: "Invalid rest type" }, 400);
+      const { data: pool } = await admin.from("player_investiture")
+        .select("burnout_current, burnout_upgrades").eq("account_id", me.id).maybeSingle();
+      if (!pool) return json({ error: "No investiture pool" }, 404);
+      const bu = (pool as any).burnout_upgrades ?? 0;
+      const riskCap = 50 + bu;
+      const burnout = (pool as any).burnout_current ?? 0;
+      const reduction = rest_type === "long" ? Math.floor(riskCap * 0.8) : Math.floor(riskCap * 0.2);
+      const newBurnout = Math.max(0, burnout - reduction);
+      const upd: any = { burnout_current: newBurnout, updated_at: new Date().toISOString() };
+      await admin.from("player_investiture").update(upd).eq("account_id", me.id);
+      if (rest_type === "long") {
+        await admin.from("player_skills")
+          .update({ current_charges: null, vial_active: false })
+          .eq("account_id", me.id).eq("skill_type", "allomancy");
+      }
+      await admin.from("dm_console_log").insert({
+        account_id: me.id, character_name: me.character_name,
+        event_type: "rest",
+        details: `${rest_type === "long" ? "Long" : "Short"} rest — burnout ${burnout}→${newBurnout} (reduced by ${reduction})`,
+      });
+      return json({ ok: true, burnout_before: burnout, burnout_after: newBurnout, reduction });
+    }
+
     // --- DM ONLY BELOW ---
     if (!me.is_dm) return json({ error: "DM only" }, 403);
 
@@ -808,88 +889,6 @@ Deno.serve(async (req) => {
     if (action === "delete_custom_skill") {
       await admin.from("custom_investable_items").delete().eq("id", payload.id);
       return json({ ok: true });
-    }
-    // ACTION ECONOMY
-    if (action === "get_action_state") {
-      const { data: pool } = await admin.from("player_investiture")
-        .select("investiture_score, reaction_count, action_state")
-        .eq("account_id", me.id).maybeSingle();
-      return json({
-        investiture_score: (pool as any)?.investiture_score ?? 10,
-        reaction_count: (pool as any)?.reaction_count ?? 1,
-        action_state: (pool as any)?.action_state ?? {},
-      });
-    }
-    if (action === "update_action_state") {
-      const { action_state: newState } = payload;
-      await admin.from("player_investiture")
-        .update({ action_state: newState, updated_at: new Date().toISOString() })
-        .eq("account_id", me.id);
-      // Log to DM console
-      const changed = payload.log_event;
-      if (changed) {
-        await admin.from("dm_console_log").insert({
-          account_id: me.id, character_name: me.character_name,
-          event_type: "action_economy", details: changed,
-        });
-      }
-      return json({ ok: true });
-    }
-    if (action === "drink_vial") {
-      const { skill_id } = payload;
-      const { data: skill } = await admin.from("player_skills")
-        .select("*").eq("id", skill_id).eq("account_id", me.id).maybeSingle();
-      if (!skill) return json({ error: "Skill not found" }, 404);
-      await admin.from("player_skills")
-        .update({ vial_active: true }).eq("id", skill_id);
-      await admin.from("dm_console_log").insert({
-        account_id: me.id, character_name: me.character_name,
-        event_type: "vial_drink",
-        details: `Drank ${(skill as any).skill_name} vial`,
-      });
-      return json({ ok: true });
-    }
-    if (action === "drink_base_vial") {
-      const BASE_METALS = ["aluminum","gold","copper","bronze","zinc","brass","iron","steel","tin","pewter"];
-      const { data: skills } = await admin.from("player_skills")
-        .select("id, skill_key, skill_name")
-        .eq("account_id", me.id).eq("skill_type", "allomancy")
-        .in("skill_key", BASE_METALS);
-      if (skills && skills.length > 0) {
-        const ids = skills.map((s: any) => s.id);
-        await admin.from("player_skills").update({ vial_active: true }).in("id", ids);
-        await admin.from("dm_console_log").insert({
-          account_id: me.id, character_name: me.character_name,
-          event_type: "vial_drink", details: "Drank base 10 vial",
-        });
-      }
-      return json({ ok: true });
-    }
-    if (action === "rest") {
-      const { rest_type } = payload;
-      if (rest_type !== "short" && rest_type !== "long") return json({ error: "Invalid rest type" }, 400);
-      const { data: pool } = await admin.from("player_investiture")
-        .select("burnout_current, burnout_upgrades").eq("account_id", me.id).maybeSingle();
-      if (!pool) return json({ error: "No investiture pool" }, 404);
-      const bu = (pool as any).burnout_upgrades ?? 0;
-      const riskCap = 50 + bu;
-      const burnout = (pool as any).burnout_current ?? 0;
-      const reduction = rest_type === "long" ? Math.floor(riskCap * 0.8) : Math.floor(riskCap * 0.2);
-      const newBurnout = Math.max(0, burnout - reduction);
-      const upd: any = { burnout_current: newBurnout, updated_at: new Date().toISOString() };
-      await admin.from("player_investiture").update(upd).eq("account_id", me.id);
-      if (rest_type === "long") {
-        // Long rest: reset all metal charges to max and lock vials again
-        await admin.from("player_skills")
-          .update({ current_charges: null, vial_active: false })
-          .eq("account_id", me.id).eq("skill_type", "allomancy");
-      }
-      await admin.from("dm_console_log").insert({
-        account_id: me.id, character_name: me.character_name,
-        event_type: "rest",
-        details: `${rest_type === "long" ? "Long" : "Short"} rest — burnout ${burnout}→${newBurnout} (reduced by ${reduction})`,
-      });
-      return json({ ok: true, burnout_before: burnout, burnout_after: newBurnout, reduction });
     }
 
     // DM: ACTION ECONOMY & COMBAT PANEL
