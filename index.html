@@ -87,6 +87,11 @@ input,select,textarea{font-family:inherit}
   color:var(--txt-dim);border:1px solid var(--edge);padding:6px 12px;border-radius:var(--rad);transition:.15s;white-space:nowrap;margin:2px 3px}
 .topbtn:hover{color:var(--parch);border-color:var(--gold-dim)}
 .topbtn.on{color:#1a1510;background:var(--gold);border-color:var(--gold)}
+.dm-menu{position:relative;display:inline-block}
+.dm-menu-drop{display:none;position:absolute;top:100%;right:0;margin-top:4px;background:var(--panel2);border:1px solid var(--edge2);border-radius:var(--rad);box-shadow:var(--shadow);min-width:160px;z-index:30;padding:4px 0}
+.dm-menu.open .dm-menu-drop{display:block}
+.dm-menu-item{display:block;width:100%;padding:7px 14px;text-align:left;font-family:'Cinzel',serif;font-size:.6rem;text-transform:uppercase;letter-spacing:.08em;color:var(--txt-dim);transition:.1s;white-space:nowrap}
+.dm-menu-item:hover{color:var(--parch);background:rgba(201,162,75,.08)}
 .honor-chip{display:inline-block;cursor:pointer;background:rgba(201,162,75,.12);border:1px solid var(--gold-dim);
   color:var(--gold);padding:2px 8px;border-radius:12px;font-family:'Cinzel',serif;font-size:.7rem;margin-left:6px}
 .honor-chip:hover{background:rgba(201,162,75,.2)}
@@ -512,24 +517,28 @@ html.theme-parchment{
 .theme-custom-row input[type=color]{width:40px;height:32px;border:1px solid var(--edge);border-radius:var(--rad);cursor:pointer;background:none;padding:2px}
 
 /* ACTION ECONOMY */
-.ae-wrap{padding:16px 22px;border-bottom:1px solid var(--edge);background:linear-gradient(180deg,rgba(12,11,16,.4),transparent)}
-.ae-row{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start}
-.ae-group{display:flex;flex-direction:column;align-items:center;gap:4px}
-.ae-group-label{font-family:'Cinzel',serif;font-size:.54rem;text-transform:uppercase;letter-spacing:.1em;color:var(--gold-dim)}
-.ae-slots{display:flex;gap:5px}
-.ae-slot{width:60px;height:48px;border:2px solid var(--edge2);border-radius:var(--rad);background:var(--panel);cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-size:.6rem;text-transform:uppercase;letter-spacing:.06em;color:var(--txt-dim);transition:border-color .15s,background .15s}
+.ae-wrap{padding:10px 18px 8px;border-bottom:1px solid var(--edge);background:linear-gradient(180deg,rgba(12,11,16,.4),transparent)}
+.ae-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.ae-group{display:flex;align-items:center;gap:4px}
+.ae-group-label{font-family:'Cinzel',serif;font-size:.52rem;text-transform:uppercase;letter-spacing:.08em;color:var(--gold-dim);white-space:nowrap}
+.ae-slots{display:flex;gap:3px}
+.ae-slot{width:38px;height:28px;border:1px solid var(--edge2);border-radius:3px;background:var(--panel);cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-size:.48rem;text-transform:uppercase;letter-spacing:.04em;color:var(--txt-dim);transition:border-color .15s,background .15s}
 .ae-slot:hover{border-color:var(--gold-dim)}
 .ae-slot.used{background:var(--gold);border-color:var(--gold-dim);color:#1a1510;font-weight:700}
-.ae-haste{display:flex;align-items:center;gap:5px;margin-left:8px}
-.ae-haste label{font-size:.6rem;text-transform:uppercase;letter-spacing:.1em;color:var(--txt-dim);font-family:'Cinzel',serif;cursor:pointer}
-.ae-haste input[type=checkbox]{accent-color:var(--gold);width:16px;height:16px;cursor:pointer}
-.ae-sep{width:1px;background:var(--edge);align-self:stretch;margin:0 6px}
-.ae-rest-btns{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;align-items:center}
-.ae-rest-btn{font-size:.6rem;text-transform:uppercase;letter-spacing:.09em;font-family:'Cinzel',serif;padding:7px 14px;border:1px solid var(--edge2);border-radius:var(--rad);color:var(--txt-dim);transition:.15s;background:var(--panel)}
+.ae-haste{display:flex;align-items:center;gap:4px;margin-left:4px}
+.ae-haste label{font-size:.52rem;text-transform:uppercase;letter-spacing:.08em;color:var(--txt-dim);font-family:'Cinzel',serif;cursor:pointer}
+.ae-haste input[type=checkbox]{accent-color:var(--gold);width:13px;height:13px;cursor:pointer}
+.ae-sep{width:1px;background:var(--edge);align-self:stretch;margin:0 4px;min-height:20px}
+.ae-rest-btns{display:flex;gap:5px;margin-top:6px;flex-wrap:wrap;align-items:center}
+.ae-rest-btn{font-size:.56rem;text-transform:uppercase;letter-spacing:.08em;font-family:'Cinzel',serif;padding:5px 10px;border:1px solid var(--edge2);border-radius:var(--rad);color:var(--txt-dim);transition:.15s;background:var(--panel)}
 .ae-rest-btn:hover{border-color:var(--gold-dim);color:var(--parch);background:rgba(201,162,75,.06)}
-.ae-rest-preview{font-size:.76rem;color:var(--txt-faint);font-style:italic;margin-left:6px}
-.ae-drink-btns{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}
-.ae-drink-btn{font-size:.56rem;text-transform:uppercase;letter-spacing:.06em;font-family:'Cinzel',serif;padding:4px 9px;border:1px solid var(--edge2);border-radius:var(--rad);color:var(--txt-dim);transition:.15s;background:var(--ink2)}
+.ae-rest-preview{font-size:.72rem;color:var(--txt-faint);font-style:italic}
+.ae-drink-wrap{margin-top:6px}
+.ae-drink-wrap summary{font-family:'Cinzel',serif;font-size:.54rem;text-transform:uppercase;letter-spacing:.1em;color:var(--gold-dim);cursor:pointer;list-style:none;display:flex;align-items:center;gap:5px}
+.ae-drink-wrap summary::before{content:"▸";font-size:.6rem}
+.ae-drink-wrap[open] summary::before{content:"▾"}
+.ae-drink-btns{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px}
+.ae-drink-btn{font-size:.5rem;text-transform:uppercase;letter-spacing:.04em;font-family:'Cinzel',serif;padding:3px 7px;border:1px solid var(--edge2);border-radius:3px;color:var(--txt-dim);transition:.15s;background:var(--ink2)}
 .ae-drink-btn:hover{border-color:var(--gold-dim);color:var(--parch)}
 .ae-drink-btn.active{border-color:var(--pos);color:var(--pos-bright)}
 .ae-drink-btn.base10{border-color:var(--gold-dim);color:var(--gold)}
@@ -574,8 +583,8 @@ html.theme-parchment{
   .skill-grid{grid-template-columns:1fr}
   .ip-pool{flex-wrap:wrap;gap:8px}
   .ip-card{min-width:80px;padding:10px 8px}
-  .ae-wrap{padding:12px 10px}
-  .ae-slot{width:50px;height:40px;font-size:.5rem}
+  .ae-wrap{padding:8px 10px}
+  .ae-slot{width:34px;height:24px;font-size:.44rem}
   .ae-sep{display:none}
 }
 </style>
@@ -646,10 +655,9 @@ html.theme-parchment{
   <!-- PLAYER PANEL TAB -->
   <div class="tab-section" id="tab-invest">
     <div class="ae-wrap" id="aeWrap" style="display:none">
-      <div class="section-head" style="margin-bottom:10px">Action Economy</div>
       <div class="ae-row" id="aeSlots"></div>
       <div class="ae-rest-btns" id="aeRestBtns"></div>
-      <div class="ae-drink-btns" id="aeDrinkBtns"></div>
+      <details class="ae-drink-wrap" id="aeDrinkWrap"><summary>Vials</summary><div class="ae-drink-btns" id="aeDrinkBtns"></div></details>
     </div>
     <div class="invest-header">
       <div class="ip-pool">
@@ -695,7 +703,6 @@ html.theme-parchment{
         <div class="dm-sidebar-head">Investiture</div>
         <button class="dm-nav-btn active" data-dm="players">Players</button>
         <button class="dm-nav-btn" data-dm="combat">Combat</button>
-        <button class="dm-nav-btn" data-dm="actionpanel">Action Panel</button>
         <button class="dm-nav-btn" data-dm="console">Console</button>
         <button class="dm-nav-btn" data-dm="custom">Custom Items</button>
         <div class="dm-divider"></div>
@@ -1430,14 +1437,23 @@ function toggleReorder(){
   render();
 }
 function addDMRosterButtons(){
-  if(document.getElementById("dmAddBtn"))return;
-  const bar=document.querySelector(".topbar"),anchor=document.querySelector(".topbar-right");
-  const mk=(id,label,fn)=>{const b=document.createElement("button");b.className="topbtn";b.id=id;b.textContent=label;b.onclick=fn;bar.insertBefore(b,anchor);};
-  mk("dmAddBtn","+ Add NPC",()=>openEditor(null));
-  mk("dmReorderBtn","Reorder",toggleReorder);
-  mk("dmRepGroupsBtn","Rep Groups",()=>{switchTab("dmpanel");switchDmSub("repgroups");});
-  mk("dmRenameBtn","Rename Labels",()=>{switchTab("dmpanel");switchDmSub("rename");});
-  mk("dmPreviewBtn","View As…",openPreviewPicker);
+  if(document.getElementById("dmMenuWrap"))return;
+  const anchor=document.querySelector(".topbar-right");
+  const wrap=document.createElement("div");wrap.className="dm-menu";wrap.id="dmMenuWrap";
+  const btn=document.createElement("button");btn.className="topbtn";btn.id="dmMenuBtn";btn.textContent="DM Tools";
+  btn.onclick=(e)=>{e.stopPropagation();wrap.classList.toggle("open");};
+  const drop=document.createElement("div");drop.className="dm-menu-drop";
+  const items=[
+    ["+ Add NPC",()=>openEditor(null)],
+    ["Reorder",toggleReorder],
+    ["Rep Groups",()=>{switchTab("dmpanel");switchDmSub("repgroups");}],
+    ["Rename Labels",()=>{switchTab("dmpanel");switchDmSub("rename");}],
+    ["View As…",openPreviewPicker],
+  ];
+  items.forEach(([label,fn])=>{const b=document.createElement("button");b.className="dm-menu-item";b.textContent=label;b.onclick=()=>{wrap.classList.remove("open");fn();};drop.appendChild(b);});
+  wrap.appendChild(btn);wrap.appendChild(drop);
+  anchor.prepend(wrap);
+  document.addEventListener("click",()=>wrap.classList.remove("open"));
 }
 function showHonorExplain(){
   const mb=document.getElementById("modalBg"),m=document.getElementById("modal");
@@ -1869,8 +1885,7 @@ async function markRead(msgId){
 async function loadDmSub(sub){
   const c=document.getElementById("dmContent");
   if(sub==="players")await renderDmPlayers(c);
-  else if(sub==="combat")await renderDmCombat(c);
-  else if(sub==="actionpanel")await renderDmActionPanel(c);
+  else if(sub==="combat")await renderDmCombatCombined(c);
   else if(sub==="console")await renderDmConsole(c);
   else if(sub==="custom")await renderDmCustomItems(c);
   else if(sub==="compose")renderDmCompose(c);
@@ -1884,51 +1899,74 @@ async function loadDmSub(sub){
 }
 
 // --- DM: COMBAT SUMMARY ---
-async function renderDmCombat(c){
-  c.innerHTML='<h2>Combat Summary</h2><div class="spinner"></div>';
+async function renderDmCombatCombined(c){
+  c.innerHTML='<h2>Combat</h2><div class="spinner"></div>';
   try{
-    const{players}=await api("dm_get_combat_summary");
-    let html=`<h2>Combat Summary</h2>
-      <p style="color:var(--txt-faint);font-size:.82rem;margin-bottom:10px;font-style:italic">At-a-glance view of all players' burnout and metal charges during combat.</p>
-      <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap">
+    const[combatR,actionR]=await Promise.all([api("dm_get_combat_summary"),api("dm_get_action_panel")]);
+    const combatMap={};(combatR.players||[]).forEach(p=>{combatMap[p.account_id]=p;});
+    const actionMap={};(actionR.players||[]).forEach(p=>{actionMap[p.account_id]=p;});
+    const allIds=[...new Set([...Object.keys(combatMap),...Object.keys(actionMap)])];
+    let html=`<h2>Combat</h2>
+      <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">
+        <button class="mini-btn danger" onclick="dmNewRound()">New Round</button>
         <button class="mini-btn danger" onclick="dmResetCombat(null,'burnout')">Reset All Burnout</button>
         <button class="mini-btn danger" onclick="dmResetCombat(null,'charges')">Reset All Charges</button>
-        <button class="mini-btn danger" onclick="dmResetCombat(null,'all')">Reset Everything</button>
         <button class="mini-btn" onclick="loadDmSub('combat')">Refresh</button>
       </div>
       <div class="combat-summary">`;
-    for(const p of players){
-      const bu=p.burnout_upgrades||0;const bRisk=50+bu;const bHigh=65+bu;const bComp=75+bu;
-      const burnout=p.burnout_current||0;
+    for(const aid of allIds){
+      const cp=combatMap[aid]||{};
+      const ap=actionMap[aid]||{};
+      const name=cp.character_name||ap.character_name||"?";
+      const bu=cp.burnout_upgrades||0;const bRisk=50+bu;const bHigh=65+bu;const bComp=75+bu;
+      const burnout=cp.burnout_current||0;
       const burnoutPct=Math.min(burnout/bComp*100,100);
       const burnoutColor=burnout>=bComp?"#fff":burnout>=bHigh?"var(--blood-bright)":burnout>=bRisk?"var(--gold)":"var(--pos)";
+      const score=ap.investiture_score??10;
+      const invested=Math.max(0,aeModifier(score));
+      const rc=ap.reaction_count??1;
+      const st=ap.action_state||{};
+      const haste=!!st.haste;
+      const slotHtml=(key,label)=>`<div class="dm-action-slot${st[key]?' used':''}">${label}</div>`;
+      let actionsRow=`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:6px 0">`;
+      actionsRow+=`<div class="dm-action-group-label" style="margin:0">Act</div><div class="dm-action-slots" style="margin:0">${slotHtml('action','Act')}${haste?slotHtml('haste_action','Hst'):''}</div>`;
+      actionsRow+=`<div class="dm-action-group-label" style="margin:0">Bns</div><div class="dm-action-slots" style="margin:0">${slotHtml('bonus','Bns')}</div>`;
+      actionsRow+=`<div class="dm-action-group-label" style="margin:0">Rct</div><div class="dm-action-slots" style="margin:0">`;
+      for(let i=0;i<rc;i++){const key=i===0?'reaction':`reaction_${i+1}`;actionsRow+=slotHtml(key,'Rct');}
+      actionsRow+=`</div>`;
+      if(invested>0){
+        actionsRow+=`<div class="dm-action-group-label" style="margin:0">Inv(${invested})</div><div class="dm-action-slots" style="margin:0">`;
+        for(let i=0;i<invested;i++){actionsRow+=slotHtml(`invested_${i+1}`,'Inv');}
+        actionsRow+=`</div>`;
+      }
+      if(haste)actionsRow+=`<span style="font-size:.55rem;color:var(--gold)">Haste</span>`;
+      actionsRow+=`</div>`;
       let chargesHTML="";
-      if(p.metal_charges&&p.metal_charges.length){
-        chargesHTML=p.metal_charges.map(mc=>{
-          const m=METALS[mc.skill_key];
-          const maxC=m?m.charges:0;
+      if(cp.metal_charges&&cp.metal_charges.length){
+        chargesHTML=cp.metal_charges.map(mc=>{
+          const m=METALS[mc.skill_key];const maxC=m?m.charges:0;
           const cur=mc.current_charges!=null?mc.current_charges:maxC;
           const chargeColor=maxC<=0?"var(--txt-dim)":cur<=Math.floor(maxC*0.25)?"var(--blood-bright)":cur<=Math.floor(maxC*0.5)?"var(--gold)":"var(--pos)";
-          return `<div class="combat-metal-row"><span class="metal-name">${m?m.icon+" ":""}${esc(mc.skill_name)}</span><span class="metal-charges" style="color:${chargeColor}">${cur}/${maxC}</span></div>`;
-        }).join("");
+          return `<span style="font-size:.7rem;color:${chargeColor}">${esc(mc.skill_name)} ${cur}/${maxC}</span>`;
+        }).join(`<span style="color:var(--edge);margin:0 3px">|</span>`);
       }
       html+=`<div class="combat-player-card">
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px">
-          <div class="combat-player-name">${esc(p.character_name)}</div>
+          <div class="combat-player-name">${esc(name)}</div>
           <div style="display:flex;gap:4px">
-            <button class="mini-btn" style="font-size:.5rem;padding:3px 7px" onclick="dmResetCombat('${p.account_id}','burnout')">Reset Burnout</button>
-            <button class="mini-btn" style="font-size:.5rem;padding:3px 7px" onclick="dmResetCombat('${p.account_id}','charges')">Reset Charges</button>
+            <button class="mini-btn" style="font-size:.5rem;padding:3px 7px" onclick="dmResetCombat('${aid}','burnout')">Reset Bu</button>
+            <button class="mini-btn" style="font-size:.5rem;padding:3px 7px" onclick="dmResetCombat('${aid}','charges')">Reset Chg</button>
           </div>
         </div>
+        ${actionsRow}
         <div class="combat-row"><span class="lbl">Burnout</span><span class="val" style="color:${burnoutColor}">${burnout}/${bRisk}</span></div>
-        <div style="height:6px;background:var(--ink);border:1px solid var(--edge);border-radius:4px;margin:4px 0 8px;overflow:hidden"><div style="height:100%;width:${burnoutPct}%;background:${burnoutColor};border-radius:4px;transition:width .3s"></div></div>
-        ${p.has_signets?"":'<div style="font-size:.7rem;color:var(--txt-faint);font-style:italic">No signets</div>'}
-        ${chargesHTML?`<div style="margin-top:4px"><div style="font-size:.6rem;color:var(--gold-dim);font-family:Cinzel,serif;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px">Metal Charges</div>${chargesHTML}</div>`:''}
+        <div style="height:5px;background:var(--ink);border:1px solid var(--edge);border-radius:3px;margin:3px 0 6px;overflow:hidden"><div style="height:100%;width:${burnoutPct}%;background:${burnoutColor};border-radius:3px;transition:width .3s"></div></div>
+        ${chargesHTML?`<div style="margin-top:2px">${chargesHTML}</div>`:''}
       </div>`;
     }
     html+=`</div>`;
     c.innerHTML=html;
-  }catch(e){c.innerHTML=`<h2>Combat Summary</h2><div class="empty" style="color:var(--blood-bright)">${esc(e.message)}</div>`;}
+  }catch(e){c.innerHTML=`<h2>Combat</h2><div class="empty" style="color:var(--blood-bright)">${esc(e.message)}</div>`;}
 }
 async function dmResetCombat(accountId,resetType){
   const label=accountId?"this player's":"ALL players'";
@@ -2273,39 +2311,30 @@ function renderActionEconomy(){
   const reactionCount=ISTATE.reaction_count??1;
   const invested=Math.max(0,aeModifier(score));
   const alloSkills=(ISTATE.skills||[]).filter(s=>s.skill_type==="allomancy");
-  const hasAlloSkills=alloSkills.length>0;
   wrap.style.display="";
   AE_STATE=ISTATE.action_state||{};
   const haste=!!AE_STATE.haste;
   const slotsEl=document.getElementById("aeSlots");
-  let html=`<div class="ae-group"><div class="ae-group-label">Action</div><div class="ae-slots">
-    <div class="ae-slot${AE_STATE.action?' used':''}" onclick="toggleAeSlot('action')">${AE_STATE.action?'Used':'Action'}</div>
-    ${haste?`<div class="ae-slot${AE_STATE.haste_action?' used':''}" onclick="toggleAeSlot('haste_action')">${AE_STATE.haste_action?'Used':'Haste'}</div>`:''}
-  </div></div>`;
+  const slot=(key,label)=>`<div class="ae-slot${AE_STATE[key]?' used':''}" onclick="toggleAeSlot('${key}')">${AE_STATE[key]?'Used':label}</div>`;
+  let html=`<div class="ae-group"><div class="ae-group-label">Act</div><div class="ae-slots">${slot('action','Act')}${haste?slot('haste_action','Hst'):''}</div></div>`;
   html+=`<div class="ae-sep"></div>`;
-  html+=`<div class="ae-group"><div class="ae-group-label">Bonus Action</div><div class="ae-slots">
-    <div class="ae-slot${AE_STATE.bonus?' used':''}" onclick="toggleAeSlot('bonus')">${AE_STATE.bonus?'Used':'Bonus'}</div>
-  </div></div>`;
+  html+=`<div class="ae-group"><div class="ae-group-label">Bns</div><div class="ae-slots">${slot('bonus','Bns')}</div></div>`;
   html+=`<div class="ae-sep"></div>`;
-  html+=`<div class="ae-group"><div class="ae-group-label">Reaction${reactionCount>1?'s':''}</div><div class="ae-slots">`;
-  for(let i=0;i<reactionCount;i++){
-    const key=i===0?'reaction':`reaction_${i+1}`;
-    html+=`<div class="ae-slot${AE_STATE[key]?' used':''}" onclick="toggleAeSlot('${key}')">${AE_STATE[key]?'Used':'React'}</div>`;
-  }
+  html+=`<div class="ae-group"><div class="ae-group-label">Rct</div><div class="ae-slots">`;
+  for(let i=0;i<reactionCount;i++){const key=i===0?'reaction':`reaction_${i+1}`;html+=slot(key,'Rct');}
   html+=`</div></div>`;
   if(invested>0){
     html+=`<div class="ae-sep"></div>`;
-    html+=`<div class="ae-group"><div class="ae-group-label">Invested (${invested})</div><div class="ae-slots">`;
-    for(let i=0;i<invested;i++){
-      const key=`invested_${i+1}`;
-      html+=`<div class="ae-slot${AE_STATE[key]?' used':''}" onclick="toggleAeSlot('${key}')">${AE_STATE[key]?'Used':'Inv'}</div>`;
-    }
+    html+=`<div class="ae-group"><div class="ae-group-label">Inv(${invested})</div><div class="ae-slots">`;
+    for(let i=0;i<invested;i++){html+=slot(`invested_${i+1}`,'Inv');}
     html+=`</div></div>`;
   }
   html+=`<div class="ae-haste"><input type="checkbox" id="aeHaste" ${haste?'checked':''} onchange="toggleHaste(this.checked)"/><label for="aeHaste">Haste</label></div>`;
   slotsEl.innerHTML=html;
   renderRestButtons();
   renderDrinkButtons();
+  const drinkWrap=document.getElementById("aeDrinkWrap");
+  if(drinkWrap)drinkWrap.style.display=alloSkills.length?'':'none';
 }
 async function toggleAeSlot(key){
   AE_STATE[key]=!AE_STATE[key];
@@ -2394,50 +2423,12 @@ async function drinkBaseVial(){
 }
 
 // --- DM: ACTION PANEL ---
-async function renderDmActionPanel(c){
-  c.innerHTML='<h2>Action Panel</h2><div class="spinner"></div>';
-  try{
-    const{players}=await api("dm_get_action_panel");
-    let html=`<h2>Action Panel</h2>
-      <p style="color:var(--txt-faint);font-size:.82rem;margin-bottom:10px;font-style:italic">View each player's action economy state this round.</p>
-      <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap">
-        <button class="mini-btn danger" onclick="dmNewRound()">New Round</button>
-        <button class="mini-btn" onclick="loadDmSub('actionpanel')">Refresh</button>
-      </div>`;
-    for(const p of players){
-      const score=p.investiture_score??10;
-      const invested=Math.max(0,aeModifier(score));
-      const rc=p.reaction_count??1;
-      const st=p.action_state||{};
-      const haste=!!st.haste;
-      html+=`<div class="dm-action-card"><div class="dm-action-name">${esc(p.character_name)}</div>`;
-      html+=`<div class="dm-action-group-label">Action</div><div class="dm-action-slots">
-        <div class="dm-action-slot${st.action?' used':''}">Act</div>
-        ${haste?`<div class="dm-action-slot${st.haste_action?' used':''}">Hst</div>`:''}
-      </div>`;
-      html+=`<div class="dm-action-group-label">Bonus</div><div class="dm-action-slots">
-        <div class="dm-action-slot${st.bonus?' used':''}">Bns</div>
-      </div>`;
-      html+=`<div class="dm-action-group-label">Reaction${rc>1?'s':''}</div><div class="dm-action-slots">`;
-      for(let i=0;i<rc;i++){const key=i===0?'reaction':`reaction_${i+1}`;html+=`<div class="dm-action-slot${st[key]?' used':''}">Rct</div>`;}
-      html+=`</div>`;
-      if(invested>0){
-        html+=`<div class="dm-action-group-label">Invested (${invested})</div><div class="dm-action-slots">`;
-        for(let i=0;i<invested;i++){const key=`invested_${i+1}`;html+=`<div class="dm-action-slot${st[key]?' used':''}">Inv</div>`;}
-        html+=`</div>`;
-      }
-      if(haste)html+=`<div style="font-size:.65rem;color:var(--gold);margin-top:4px">Haste active</div>`;
-      html+=`</div>`;
-    }
-    c.innerHTML=html;
-  }catch(e){c.innerHTML=`<h2>Action Panel</h2><div class="empty" style="color:var(--blood-bright)">${esc(e.message)}</div>`;}
-}
 async function dmNewRound(){
   if(!confirm("Start a new round? This resets all players' action economy states."))return;
   try{
     await api("dm_new_round");
     toast("New round started");
-    loadDmSub("actionpanel");
+    loadDmSub("combat");
   }catch(e){toast("Error: "+e.message);}
 }
 
