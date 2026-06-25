@@ -118,7 +118,7 @@ input,select,textarea{font-family:inherit}
 .subgrp{margin-top:13px}
 .subgrp-head{font-family:'Cinzel',serif;font-size:.68rem;letter-spacing:.13em;text-transform:uppercase;
   color:var(--parch-dim);margin:0 0 8px;padding-bottom:4px;border-bottom:1px dashed var(--edge)}
-.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(275px,1fr));gap:10px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(275px,1fr));gap:10px}
 .card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--edge);
   border-radius:var(--rad);padding:11px 13px 12px;cursor:pointer;position:relative;overflow:hidden;
   transition:border-color .18s,transform .12s,box-shadow .18s}
@@ -258,7 +258,7 @@ textarea.notes:focus{outline:none;border-color:var(--gold-dim)}
 .invest-body{padding:18px 22px 80px;display:flex;flex-direction:column;gap:24px}
 .section-head{font-family:'Cinzel',serif;font-size:.95rem;color:var(--gold);font-weight:600;margin-bottom:12px;padding-bottom:5px;border-bottom:1px solid var(--edge);display:flex;align-items:center;gap:8px}
 .section-head span{font-size:.66rem;color:var(--txt-faint);font-style:italic;font-family:'EB Garamond',serif;font-weight:400}
-.skill-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:10px}
+.skill-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:10px}
 .skill-card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--edge);border-radius:var(--rad);overflow:hidden;transition:border-color .18s}
 .skill-card:hover{border-color:var(--edge2)}
 .skill-card.mastered{border-color:rgba(201,162,75,.3)}
@@ -511,6 +511,53 @@ html.theme-parchment{
 .theme-custom-row label{font-family:'Cinzel',serif;font-size:.66rem;text-transform:uppercase;letter-spacing:.12em;color:var(--gold-dim)}
 .theme-custom-row input[type=color]{width:40px;height:32px;border:1px solid var(--edge);border-radius:var(--rad);cursor:pointer;background:none;padding:2px}
 
+/* ACTION ECONOMY */
+.ae-wrap{padding:16px 22px;border-bottom:1px solid var(--edge);background:linear-gradient(180deg,rgba(12,11,16,.4),transparent)}
+.ae-row{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start}
+.ae-group{display:flex;flex-direction:column;align-items:center;gap:4px}
+.ae-group-label{font-family:'Cinzel',serif;font-size:.54rem;text-transform:uppercase;letter-spacing:.1em;color:var(--gold-dim)}
+.ae-slots{display:flex;gap:5px}
+.ae-slot{width:60px;height:48px;border:2px solid var(--edge2);border-radius:var(--rad);background:var(--panel);cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-size:.6rem;text-transform:uppercase;letter-spacing:.06em;color:var(--txt-dim);transition:border-color .15s,background .15s}
+.ae-slot:hover{border-color:var(--gold-dim)}
+.ae-slot.used{background:var(--gold);border-color:var(--gold-dim);color:#1a1510;font-weight:700}
+.ae-haste{display:flex;align-items:center;gap:5px;margin-left:8px}
+.ae-haste label{font-size:.6rem;text-transform:uppercase;letter-spacing:.1em;color:var(--txt-dim);font-family:'Cinzel',serif;cursor:pointer}
+.ae-haste input[type=checkbox]{accent-color:var(--gold);width:16px;height:16px;cursor:pointer}
+.ae-sep{width:1px;background:var(--edge);align-self:stretch;margin:0 6px}
+.ae-rest-btns{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;align-items:center}
+.ae-rest-btn{font-size:.6rem;text-transform:uppercase;letter-spacing:.09em;font-family:'Cinzel',serif;padding:7px 14px;border:1px solid var(--edge2);border-radius:var(--rad);color:var(--txt-dim);transition:.15s;background:var(--panel)}
+.ae-rest-btn:hover{border-color:var(--gold-dim);color:var(--parch);background:rgba(201,162,75,.06)}
+.ae-rest-preview{font-size:.76rem;color:var(--txt-faint);font-style:italic;margin-left:6px}
+.ae-drink-btns{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}
+.ae-drink-btn{font-size:.56rem;text-transform:uppercase;letter-spacing:.06em;font-family:'Cinzel',serif;padding:4px 9px;border:1px solid var(--edge2);border-radius:var(--rad);color:var(--txt-dim);transition:.15s;background:var(--ink2)}
+.ae-drink-btn:hover{border-color:var(--gold-dim);color:var(--parch)}
+.ae-drink-btn.active{border-color:var(--pos);color:var(--pos-bright)}
+.ae-drink-btn.base10{border-color:var(--gold-dim);color:var(--gold)}
+.ae-drink-btn.base10:hover{background:rgba(201,162,75,.1)}
+/* Vial locked overlay */
+.vial-locked{opacity:.5;position:relative}
+.vial-locked::after{content:"LOCKED";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:'Cinzel',serif;font-size:.5rem;letter-spacing:.1em;color:var(--txt-faint);background:rgba(12,11,16,.85);padding:2px 6px;border-radius:3px;pointer-events:none}
+/* DM Console */
+.console-wrap{background:var(--ink);border:1px solid var(--edge);border-radius:var(--rad);max-height:65vh;overflow-y:auto;font-family:Consolas,'Courier New',monospace;font-size:.78rem;padding:0}
+.console-line{padding:5px 10px;border-bottom:1px solid rgba(53,47,69,.3);display:flex;gap:8px;align-items:baseline}
+.console-line:hover{background:rgba(201,162,75,.03)}
+.console-time{color:var(--txt-faint);font-size:.68rem;flex-shrink:0;min-width:60px}
+.console-char{color:var(--gold);font-weight:600;min-width:80px;flex-shrink:0}
+.console-type{font-size:.6rem;text-transform:uppercase;letter-spacing:.06em;padding:1px 5px;border-radius:3px;flex-shrink:0;min-width:70px;text-align:center}
+.console-type.action_economy{background:rgba(74,128,196,.15);color:var(--blue)}
+.console-type.vial_drink{background:rgba(79,157,107,.15);color:var(--pos-bright)}
+.console-type.rest{background:rgba(192,132,252,.12);color:#c084fc}
+.console-type.new_round{background:rgba(201,162,75,.15);color:var(--gold)}
+.console-type.invest{background:rgba(158,43,43,.15);color:var(--blood-bright)}
+.console-details{color:var(--txt-dim);flex:1;min-width:0;word-break:break-word}
+/* DM Action Panel */
+.dm-action-card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--edge);border-radius:var(--rad);padding:12px 14px;margin-bottom:9px}
+.dm-action-name{font-family:'Cinzel',serif;font-size:.88rem;color:var(--parch);font-weight:600;margin-bottom:6px}
+.dm-action-slots{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:4px}
+.dm-action-slot{width:40px;height:30px;border:1px solid var(--edge2);border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:.5rem;text-transform:uppercase;color:var(--txt-faint)}
+.dm-action-slot.used{background:var(--gold);border-color:var(--gold-dim);color:#1a1510}
+.dm-action-group-label{font-size:.52rem;text-transform:uppercase;letter-spacing:.08em;color:var(--gold-dim);font-family:'Cinzel',serif;margin:4px 0 2px}
+
 @media(max-width:820px){
   aside.ht-side.open{position:fixed;right:0;top:54px;width:min(360px,100%);z-index:25;box-shadow:var(--shadow)}
   .stats-grid{grid-template-columns:1fr}
@@ -527,6 +574,9 @@ html.theme-parchment{
   .skill-grid{grid-template-columns:1fr}
   .ip-pool{flex-wrap:wrap;gap:8px}
   .ip-card{min-width:80px;padding:10px 8px}
+  .ae-wrap{padding:12px 10px}
+  .ae-slot{width:50px;height:40px;font-size:.5rem}
+  .ae-sep{display:none}
 }
 </style>
 </head>
@@ -593,8 +643,14 @@ html.theme-parchment{
     </div>
   </div>
 
-  <!-- INVESTITURE TAB -->
+  <!-- PLAYER PANEL TAB -->
   <div class="tab-section" id="tab-invest">
+    <div class="ae-wrap" id="aeWrap" style="display:none">
+      <div class="section-head" style="margin-bottom:10px">Action Economy</div>
+      <div class="ae-row" id="aeSlots"></div>
+      <div class="ae-rest-btns" id="aeRestBtns"></div>
+      <div class="ae-drink-btns" id="aeDrinkBtns"></div>
+    </div>
     <div class="invest-header">
       <div class="ip-pool">
         <div class="ip-card avail"><div class="ip-num" id="ipAvail">—</div><div class="ip-lbl">Available IP</div></div>
@@ -639,6 +695,8 @@ html.theme-parchment{
         <div class="dm-sidebar-head">Investiture</div>
         <button class="dm-nav-btn active" data-dm="players">Players</button>
         <button class="dm-nav-btn" data-dm="combat">Combat</button>
+        <button class="dm-nav-btn" data-dm="actionpanel">Action Panel</button>
+        <button class="dm-nav-btn" data-dm="console">Console</button>
         <button class="dm-nav-btn" data-dm="custom">Custom Items</button>
         <div class="dm-divider"></div>
         <div class="dm-sidebar-head">Messaging</div>
@@ -1400,10 +1458,10 @@ async function loadInvestiture(){
   try{
     const[state,ciR]=await Promise.all([api("get_investiture_state"),api("list_custom_skills")]);
     ISTATE=state;customItems=ciR.items||[];
-    // attach custom item data to custom skills
     const ciMap={};customItems.forEach(ci=>{ciMap[ci.id]=ci;});
     (ISTATE.skills||[]).forEach(s=>{if(s.skill_type==="custom"&&s.custom_item_id)s._custom_data=ciMap[s.custom_item_id]||null;});
     renderInvestiture();
+    renderActionEconomy();
   }catch(e){body.innerHTML=`<div class="empty" style="color:var(--blood-bright)">${esc(e.message)}</div>`;}
 }
 function renderInvestiture(){
@@ -1512,7 +1570,7 @@ function renderAlloCard(skill){
         ${canInvest&&tier<maxTiers?`<button class="invest-btn" onclick="openInvestModal('skill','${skill.id}','${esc(name)}',${nextCost})">Invest (${nextCost} pt${nextCost!==1?'s':''})</button>`
           :tier>=maxTiers?`<span style="font-size:.68rem;color:var(--gold-dim);font-style:italic">Max tier reached</span>`
           :`<button class="invest-btn" disabled>No IP available</button>`}
-      </div>${m&&m.charges?`<div class="charges-row"><span class="charges-label">Charges</span><div class="charges-ctrl"><button onclick="adjustCharges('${skill.id}',-1,${m.charges})">-</button><div class="charges-val" id="charges_${skill.id}">${skill.current_charges!=null?skill.current_charges:m.charges}</div><button onclick="adjustCharges('${skill.id}',1,${m.charges})">+</button></div><span class="charges-max">/ ${m.charges}</span><button class="mini-btn" style="font-size:.5rem;padding:2px 6px;margin-left:auto" onclick="setChargesManual('${skill.id}',${m.charges})">Set</button></div>`:''}${baseHTML}${tiersHTML}
+      </div>${m&&m.charges?(()=>{const vialActive=!!skill.vial_active;const cur=skill.current_charges!=null?skill.current_charges:m.charges;return vialActive?`<div class="charges-row"><span class="charges-label">Charges</span><div class="charges-ctrl"><button onclick="adjustCharges('${skill.id}',-1,${m.charges})">-</button><div class="charges-val" id="charges_${skill.id}">${cur}</div><button onclick="adjustCharges('${skill.id}',1,${m.charges})">+</button></div><span class="charges-max">/ ${m.charges}</span><button class="mini-btn" style="font-size:.5rem;padding:2px 6px;margin-left:auto" onclick="setChargesManual('${skill.id}',${m.charges})">Set</button></div>`:`<div class="charges-row" style="opacity:.5"><span class="charges-label">Charges</span><span style="font-size:.72rem;color:var(--txt-faint);font-style:italic">Locked — drink vial to unlock</span><span class="charges-max" style="margin-left:auto">${cur}/${m.charges}</span></div>`;})():''}${baseHTML}${tiersHTML}
     </div>
   </div>`;
 }
@@ -1812,6 +1870,8 @@ async function loadDmSub(sub){
   const c=document.getElementById("dmContent");
   if(sub==="players")await renderDmPlayers(c);
   else if(sub==="combat")await renderDmCombat(c);
+  else if(sub==="actionpanel")await renderDmActionPanel(c);
+  else if(sub==="console")await renderDmConsole(c);
   else if(sub==="custom")await renderDmCustomItems(c);
   else if(sub==="compose")renderDmCompose(c);
   else if(sub==="sentbox")await renderDmSentbox(c);
@@ -1998,6 +2058,21 @@ async function loadPlayerDetail(pid,el){
         </div>
       </div>
       <div class="pd-section">
+        <div class="pd-section-head">Combat Settings</div>
+        <div class="pd-row">
+          <label>Investiture Score</label>
+          <input type="number" min="1" max="30" value="${state.investiture_score??10}" id="piscore_${pid}" style="width:60px;padding:5px 7px;background:var(--ink);border:1px solid var(--edge);border-radius:var(--rad);color:var(--txt);font-size:.86rem"/>
+          <span style="font-size:.72rem;color:var(--txt-faint)">Invested Actions: ${Math.max(0,Math.floor(((state.investiture_score??10)-10)/2))}</span>
+        </div>
+        <div class="pd-row">
+          <label>Reactions</label>
+          <input type="number" min="0" max="10" value="${state.reaction_count??1}" id="prcount_${pid}" style="width:60px;padding:5px 7px;background:var(--ink);border:1px solid var(--edge);border-radius:var(--rad);color:var(--txt);font-size:.86rem"/>
+        </div>
+        <div class="pd-row">
+          <button class="mini-btn go" onclick="dmSaveCombatSettings('${pid}')">Save Combat Settings</button>
+        </div>
+      </div>
+      <div class="pd-section">
         <div class="pd-section-head">Grant Allomancy / Passive</div>
         <div class="pd-row" style="flex-wrap:wrap">
           <select id="pgrant_allo_${pid}" style="flex:1;min-width:160px;padding:5px 7px;background:var(--ink);border:1px solid var(--edge);border-radius:var(--rad);color:var(--txt);font-size:.84rem">
@@ -2070,6 +2145,16 @@ async function dmSetHonor(pid){
   if(isNaN(h)){toast("Invalid");return;}
   try{await api("set_honor",{target_account_id:pid,honor_score:h});toast("Honor updated");}
   catch(e){toast("Error: "+e.message);}
+}
+async function dmSaveCombatSettings(pid){
+  const score=parseInt(document.getElementById(`piscore_${pid}`).value);
+  const rc=parseInt(document.getElementById(`prcount_${pid}`).value);
+  if(isNaN(score)||isNaN(rc)){toast("Invalid values");return;}
+  try{
+    await api("dm_set_combat_settings",{target_account_id:pid,investiture_score:score,reaction_count:rc});
+    toast(`Combat settings saved — ISM ${Math.max(0,Math.floor((score-10)/2))} invested actions, ${rc} reaction(s)`);
+    await reloadPlayerDetail(pid);
+  }catch(e){toast("Error: "+e.message);}
 }
 async function dmGrantSkill(pid,type){
   try{
@@ -2177,6 +2262,213 @@ async function dmShowIpLog(pid){
     mb.classList.add("open");
   }catch(e){toast("Error: "+e.message);}
 }
+// --- ACTION ECONOMY (Player) ---
+const BASE_METALS=["aluminum","gold","copper","bronze","zinc","brass","iron","steel","tin","pewter"];
+let AE_STATE={};
+function aeModifier(score){return Math.floor((score-10)/2);}
+function renderActionEconomy(){
+  if(!ISTATE)return;
+  const wrap=document.getElementById("aeWrap");
+  const score=ISTATE.investiture_score??10;
+  const reactionCount=ISTATE.reaction_count??1;
+  const invested=Math.max(0,aeModifier(score));
+  const alloSkills=(ISTATE.skills||[]).filter(s=>s.skill_type==="allomancy");
+  const hasAlloSkills=alloSkills.length>0;
+  wrap.style.display="";
+  AE_STATE=ISTATE.action_state||{};
+  const haste=!!AE_STATE.haste;
+  const slotsEl=document.getElementById("aeSlots");
+  let html=`<div class="ae-group"><div class="ae-group-label">Action</div><div class="ae-slots">
+    <div class="ae-slot${AE_STATE.action?' used':''}" onclick="toggleAeSlot('action')">${AE_STATE.action?'Used':'Action'}</div>
+    ${haste?`<div class="ae-slot${AE_STATE.haste_action?' used':''}" onclick="toggleAeSlot('haste_action')">${AE_STATE.haste_action?'Used':'Haste'}</div>`:''}
+  </div></div>`;
+  html+=`<div class="ae-sep"></div>`;
+  html+=`<div class="ae-group"><div class="ae-group-label">Bonus Action</div><div class="ae-slots">
+    <div class="ae-slot${AE_STATE.bonus?' used':''}" onclick="toggleAeSlot('bonus')">${AE_STATE.bonus?'Used':'Bonus'}</div>
+  </div></div>`;
+  html+=`<div class="ae-sep"></div>`;
+  html+=`<div class="ae-group"><div class="ae-group-label">Reaction${reactionCount>1?'s':''}</div><div class="ae-slots">`;
+  for(let i=0;i<reactionCount;i++){
+    const key=i===0?'reaction':`reaction_${i+1}`;
+    html+=`<div class="ae-slot${AE_STATE[key]?' used':''}" onclick="toggleAeSlot('${key}')">${AE_STATE[key]?'Used':'React'}</div>`;
+  }
+  html+=`</div></div>`;
+  if(invested>0){
+    html+=`<div class="ae-sep"></div>`;
+    html+=`<div class="ae-group"><div class="ae-group-label">Invested (${invested})</div><div class="ae-slots">`;
+    for(let i=0;i<invested;i++){
+      const key=`invested_${i+1}`;
+      html+=`<div class="ae-slot${AE_STATE[key]?' used':''}" onclick="toggleAeSlot('${key}')">${AE_STATE[key]?'Used':'Inv'}</div>`;
+    }
+    html+=`</div></div>`;
+  }
+  html+=`<div class="ae-haste"><input type="checkbox" id="aeHaste" ${haste?'checked':''} onchange="toggleHaste(this.checked)"/><label for="aeHaste">Haste</label></div>`;
+  slotsEl.innerHTML=html;
+  renderRestButtons();
+  renderDrinkButtons();
+}
+async function toggleAeSlot(key){
+  AE_STATE[key]=!AE_STATE[key];
+  const label=key.replace(/_/g,' ');
+  try{
+    await api("update_action_state",{action_state:AE_STATE,log_event:`${AE_STATE[key]?'Used':'Restored'} ${label}`});
+    renderActionEconomy();
+  }catch(e){toast("Error: "+e.message);}
+}
+async function toggleHaste(on){
+  AE_STATE.haste=on;
+  if(!on){delete AE_STATE.haste_action;}
+  try{
+    await api("update_action_state",{action_state:AE_STATE,log_event:on?'Haste applied':'Haste removed'});
+    ISTATE.action_state=AE_STATE;
+    renderActionEconomy();
+  }catch(e){toast("Error: "+e.message);}
+}
+function renderRestButtons(){
+  const el=document.getElementById("aeRestBtns");
+  const hasSignets=(ISTATE.skills||[]).some(s=>s.skill_type==="signet");
+  if(!hasSignets){el.innerHTML="";return;}
+  const bu=ISTATE.burnout_upgrades||0;
+  const riskCap=50+bu;
+  const burnout=ISTATE.burnout_current||0;
+  const shortRed=Math.floor(riskCap*0.2);
+  const longRed=Math.floor(riskCap*0.8);
+  const shortResult=Math.max(0,burnout-shortRed);
+  const longResult=Math.max(0,burnout-longRed);
+  el.innerHTML=`<button class="ae-rest-btn" onclick="doRest('short')">Short Rest</button>
+    <span class="ae-rest-preview">Burnout ${burnout} → ${shortResult} (-${Math.min(shortRed,burnout)})</span>
+    <button class="ae-rest-btn" onclick="doRest('long')">Long Rest</button>
+    <span class="ae-rest-preview">Burnout ${burnout} → ${longResult} (-${Math.min(longRed,burnout)}) + reset charges + lock vials</span>`;
+}
+async function doRest(type){
+  const label=type==="long"?"Long":"Short";
+  if(!confirm(`Take a ${label} Rest?${type==="long"?" This will also reset all metal charges and lock vials.":""}`))return;
+  try{
+    const r=await api("rest",{rest_type:type});
+    toast(`${label} Rest — Burnout ${r.burnout_before} → ${r.burnout_after}`);
+    ISTATE=await api("get_investiture_state");
+    const ciR=await api("list_custom_skills");
+    customItems=ciR.items||[];
+    const ciMap={};customItems.forEach(ci=>{ciMap[ci.id]=ci;});
+    (ISTATE.skills||[]).forEach(s=>{if(s.skill_type==="custom"&&s.custom_item_id)s._custom_data=ciMap[s.custom_item_id]||null;});
+    renderInvestiture();
+    renderActionEconomy();
+  }catch(e){toast("Error: "+e.message);}
+}
+function renderDrinkButtons(){
+  const el=document.getElementById("aeDrinkBtns");
+  const alloSkills=(ISTATE.skills||[]).filter(s=>s.skill_type==="allomancy");
+  if(!alloSkills.length){el.innerHTML="";return;}
+  const hasBase=alloSkills.some(s=>BASE_METALS.includes(s.skill_key));
+  let html="";
+  if(hasBase){
+    html+=`<button class="ae-drink-btn base10" onclick="drinkBaseVial()">Drink Base 10 Vial</button>`;
+  }
+  alloSkills.forEach(s=>{
+    const active=!!s.vial_active;
+    const m=METALS[s.skill_key];
+    const name=m?m.name:s.skill_name;
+    html+=`<button class="ae-drink-btn${active?' active':''}" onclick="drinkVial('${s.id}')" ${active?'disabled':''}>${active?name+' (active)':'Drink '+name+' vial'}</button>`;
+  });
+  el.innerHTML=html;
+}
+async function drinkVial(skillId){
+  try{
+    await api("drink_vial",{skill_id:skillId});
+    const sk=(ISTATE.skills||[]).find(s=>s.id===skillId);
+    if(sk)sk.vial_active=true;
+    toast("Vial consumed");
+    renderDrinkButtons();
+    renderInvestiture();
+  }catch(e){toast("Error: "+e.message);}
+}
+async function drinkBaseVial(){
+  if(!confirm("Drink the base 10 vial? This activates charges for all 10 base metals you have."))return;
+  try{
+    await api("drink_base_vial");
+    (ISTATE.skills||[]).forEach(s=>{if(s.skill_type==="allomancy"&&BASE_METALS.includes(s.skill_key))s.vial_active=true;});
+    toast("Base 10 vial consumed");
+    renderDrinkButtons();
+    renderInvestiture();
+  }catch(e){toast("Error: "+e.message);}
+}
+
+// --- DM: ACTION PANEL ---
+async function renderDmActionPanel(c){
+  c.innerHTML='<h2>Action Panel</h2><div class="spinner"></div>';
+  try{
+    const{players}=await api("dm_get_action_panel");
+    let html=`<h2>Action Panel</h2>
+      <p style="color:var(--txt-faint);font-size:.82rem;margin-bottom:10px;font-style:italic">View each player's action economy state this round.</p>
+      <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap">
+        <button class="mini-btn danger" onclick="dmNewRound()">New Round</button>
+        <button class="mini-btn" onclick="loadDmSub('actionpanel')">Refresh</button>
+      </div>`;
+    for(const p of players){
+      const score=p.investiture_score??10;
+      const invested=Math.max(0,aeModifier(score));
+      const rc=p.reaction_count??1;
+      const st=p.action_state||{};
+      const haste=!!st.haste;
+      html+=`<div class="dm-action-card"><div class="dm-action-name">${esc(p.character_name)}</div>`;
+      html+=`<div class="dm-action-group-label">Action</div><div class="dm-action-slots">
+        <div class="dm-action-slot${st.action?' used':''}">Act</div>
+        ${haste?`<div class="dm-action-slot${st.haste_action?' used':''}">Hst</div>`:''}
+      </div>`;
+      html+=`<div class="dm-action-group-label">Bonus</div><div class="dm-action-slots">
+        <div class="dm-action-slot${st.bonus?' used':''}">Bns</div>
+      </div>`;
+      html+=`<div class="dm-action-group-label">Reaction${rc>1?'s':''}</div><div class="dm-action-slots">`;
+      for(let i=0;i<rc;i++){const key=i===0?'reaction':`reaction_${i+1}`;html+=`<div class="dm-action-slot${st[key]?' used':''}">Rct</div>`;}
+      html+=`</div>`;
+      if(invested>0){
+        html+=`<div class="dm-action-group-label">Invested (${invested})</div><div class="dm-action-slots">`;
+        for(let i=0;i<invested;i++){const key=`invested_${i+1}`;html+=`<div class="dm-action-slot${st[key]?' used':''}">Inv</div>`;}
+        html+=`</div>`;
+      }
+      if(haste)html+=`<div style="font-size:.65rem;color:var(--gold);margin-top:4px">Haste active</div>`;
+      html+=`</div>`;
+    }
+    c.innerHTML=html;
+  }catch(e){c.innerHTML=`<h2>Action Panel</h2><div class="empty" style="color:var(--blood-bright)">${esc(e.message)}</div>`;}
+}
+async function dmNewRound(){
+  if(!confirm("Start a new round? This resets all players' action economy states."))return;
+  try{
+    await api("dm_new_round");
+    toast("New round started");
+    loadDmSub("actionpanel");
+  }catch(e){toast("Error: "+e.message);}
+}
+
+// --- DM: CONSOLE ---
+async function renderDmConsole(c){
+  c.innerHTML='<h2>Console</h2><div class="spinner"></div>';
+  try{
+    const{logs}=await api("dm_get_console",{limit:200});
+    let html=`<h2>Console</h2>
+      <p style="color:var(--txt-faint);font-size:.82rem;margin-bottom:10px;font-style:italic">Activity log of player actions.</p>
+      <div style="margin-bottom:10px"><button class="mini-btn" onclick="loadDmSub('console')">Refresh</button></div>
+      <div class="console-wrap">`;
+    if(!logs.length){
+      html+=`<div style="padding:20px;text-align:center;color:var(--txt-faint);font-style:italic">No events logged yet.</div>`;
+    }else{
+      for(const log of logs){
+        const t=new Date(log.created_at);
+        const ts=t.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+        html+=`<div class="console-line">
+          <span class="console-time">${ts}</span>
+          <span class="console-char">${esc(log.character_name)}</span>
+          <span class="console-type ${esc(log.event_type)}">${esc(log.event_type.replace(/_/g,' '))}</span>
+          <span class="console-details">${esc(log.details)}</span>
+        </div>`;
+      }
+    }
+    html+=`</div>`;
+    c.innerHTML=html;
+  }catch(e){c.innerHTML=`<h2>Console</h2><div class="empty" style="color:var(--blood-bright)">${esc(e.message)}</div>`;}
+}
+
 // --- DM: CUSTOM ITEMS ---
 async function renderDmCustomItems(c){
   c.innerHTML='<h2>Custom Investable Items</h2><div class="spinner"></div>';
