@@ -682,7 +682,7 @@ html.theme-parchment{
           </div>
         </div>
         <div style="color:var(--txt-faint);font-size:.78rem;margin-top:5px;font-style:italic;line-height:1.4">Points lock when invested.<br>Only the DM can refund or reassign them.</div>
-        <button class="mini-btn" style="margin-top:8px" onclick="showIpLog()">View IP Log</button>
+        <div style="display:flex;gap:5px;margin-top:8px"><button class="mini-btn" onclick="showIpLog()">View IP Log</button><button class="mini-btn" onclick="showTpLog()">View TP Log</button></div>
       </div>
     </div>
     <div class="invest-body" id="investBody"><div class="spinner"></div></div>
@@ -1029,7 +1029,7 @@ function toast(msg,dur=2400){
   clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("show"),dur);
 }
 const esc=s=>(s==null?"":String(s)).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-function quickBtns(inputId,max){return [1,5,10].filter(a=>a<=max).map(a=>`<button class="mini-btn" style="padding:4px 10px;font-size:.78rem" onclick="document.getElementById('${inputId}').value=${a}">+${a}</button>`).join('');}
+function quickBtns(inputId,max){return [1,5,10].filter(a=>a<=max).map(a=>`<button class="mini-btn" style="padding:4px 10px;font-size:.78rem" onclick="const el=document.getElementById('${inputId}');el.value=${a};el.dispatchEvent(new Event('input'))">+${a}</button>`).join('');}
 function fmtDate(iso){if(!iso)return"";const d=new Date(iso);return d.toLocaleDateString(undefined,{month:"short",day:"numeric",year:"2-digit"})+" "+d.toLocaleTimeString(undefined,{hour:"2-digit",minute:"2-digit"});}
 // Safe encoding for string values placed inside onclick="fn(HERE)" attributes.
 // JSON.stringify gives a valid JS literal; replace " with &quot; so it doesn't
@@ -1733,35 +1733,74 @@ function openInvestModal(type,id,name,suggestedAmt,upgradeKey,upgradeName){
   const skill=(ISTATE.skills||[]).find(s=>s.id===id);
   const isSignet=skill&&skill.skill_type==="signet";
   const totalAvail=isSignet?avail+tp:avail;
+  const showTpChoice=isSignet&&tp>0;
   m.innerHTML=`<h3>Invest Points</h3>
     <div class="msub">Allocating into: <b>${esc(name)}</b></div>
-    <div style="margin-bottom:6px;color:var(--txt-dim);font-size:.88rem">Available IP: <b style="color:var(--pos-bright);font-family:'Cinzel',serif">${avail}</b>${isSignet&&tp>0?` &nbsp;|&nbsp; Training Pts: <b style="color:#c084fc;font-family:'Cinzel',serif">${tp}</b>`:''}</div>
-    ${isSignet&&tp>0?`<div style="margin-bottom:8px;color:#c084fc;font-size:.78rem;font-style:italic">TP is used first for signets &amp; burnout caps.</div>`:''}
+    <div style="margin-bottom:6px;color:var(--txt-dim);font-size:.88rem">Available IP: <b style="color:var(--pos-bright);font-family:'Cinzel',serif">${avail}</b>${showTpChoice?` &nbsp;|&nbsp; Training Pts: <b style="color:#c084fc;font-family:'Cinzel',serif">${tp}</b>`:''}</div>
     <div style="display:flex;align-items:center;gap:10px;margin:12px 0">
       <label style="font-size:.66rem;text-transform:uppercase;letter-spacing:.12em;color:var(--gold-dim);font-family:'Cinzel',serif">Amount:</label>
-      <input type="number" id="imAmt" min="1" max="${totalAvail}" value="${Math.min(suggestedAmt||1,totalAvail)}" style="width:72px;padding:8px;background:var(--ink);border:1px solid var(--edge);border-radius:var(--rad);color:var(--txt);font-size:1rem;text-align:center;font-family:'Cinzel',serif"/>
+      <input type="number" id="imAmt" min="1" max="${totalAvail}" value="${Math.min(suggestedAmt||1,totalAvail)}" style="width:72px;padding:8px;background:var(--ink);border:1px solid var(--edge);border-radius:var(--rad);color:var(--txt);font-size:1rem;text-align:center;font-family:'Cinzel',serif" oninput="updateTpIpSplit()"/>
       <div style="display:flex;gap:4px">${quickBtns('imAmt',totalAvail)}</div>
     </div>
+    ${showTpChoice?`<div style="margin:8px 0 10px;border:1px solid var(--edge);border-radius:var(--rad);padding:10px 12px;background:rgba(192,132,252,.04)">
+      <div style="font-size:.66rem;text-transform:uppercase;letter-spacing:.1em;color:#c084fc;font-family:'Cinzel',serif;margin-bottom:6px">Point Source</div>
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+        <label style="display:flex;align-items:center;gap:4px;font-size:.82rem;color:var(--txt-dim);cursor:pointer"><input type="radio" name="imSrc" value="tp_first" checked onchange="updateTpIpSplit()"/> TP First</label>
+        <label style="display:flex;align-items:center;gap:4px;font-size:.82rem;color:var(--txt-dim);cursor:pointer"><input type="radio" name="imSrc" value="ip_first" onchange="updateTpIpSplit()"/> IP First</label>
+        <label style="display:flex;align-items:center;gap:4px;font-size:.82rem;color:var(--txt-dim);cursor:pointer"><input type="radio" name="imSrc" value="tp_only" onchange="updateTpIpSplit()"/> TP Only</label>
+        <label style="display:flex;align-items:center;gap:4px;font-size:.82rem;color:var(--txt-dim);cursor:pointer"><input type="radio" name="imSrc" value="ip_only" onchange="updateTpIpSplit()"/> IP Only</label>
+      </div>
+      <div id="imSplitPreview" style="margin-top:6px;font-size:.78rem;color:var(--txt-faint)"></div>
+    </div>`:''}
+    <input type="hidden" id="imTpAmt" value="0"/>
     <div style="font-size:.8rem;color:var(--txt-dim);font-style:italic;margin-bottom:6px">Points are permanently locked. Only the DM can refund them.</div>
     <div class="modal-actions">
       <button class="mini-btn" onclick="document.getElementById('modalBg').classList.remove('open')">Cancel</button>
       <button class="mini-btn go" onclick="confirmInvest()">Confirm Invest</button>
     </div>`;
   mb.classList.add("open");
+  if(showTpChoice)updateTpIpSplit();
+}
+function updateTpIpSplit(){
+  const amtEl=document.getElementById("imAmt");
+  const tpEl=document.getElementById("imTpAmt");
+  const preview=document.getElementById("imSplitPreview");
+  if(!amtEl||!tpEl)return;
+  const amt=parseInt(amtEl.value)||0;
+  const tp=ISTATE?.training_points??0;
+  const ip=ISTATE?.available_points??0;
+  const srcEl=document.querySelector('input[name="imSrc"]:checked');
+  const src=srcEl?srcEl.value:"tp_first";
+  let tpUse=0,ipUse=0;
+  if(src==="tp_first"){tpUse=Math.min(amt,tp);ipUse=amt-tpUse;}
+  else if(src==="ip_first"){ipUse=Math.min(amt,ip);tpUse=amt-ipUse;}
+  else if(src==="tp_only"){tpUse=Math.min(amt,tp);ipUse=0;}
+  else if(src==="ip_only"){tpUse=0;ipUse=Math.min(amt,ip);}
+  tpEl.value=tpUse;
+  if(preview){
+    if(tpUse>0&&ipUse>0)preview.textContent=`Using ${tpUse} TP + ${ipUse} IP`;
+    else if(tpUse>0)preview.textContent=`Using ${tpUse} TP`;
+    else preview.textContent=`Using ${ipUse} IP`;
+    const valid=(tpUse+ipUse)===amt&&tpUse<=tp&&ipUse<=ip;
+    preview.style.color=valid?"var(--pos)":"var(--blood-bright)";
+    if(!valid)preview.textContent+=` (not enough points)`;
+  }
 }
 async function confirmInvest(){
   if(!_investCtx)return;
   const amt=parseInt(document.getElementById("imAmt").value);
   if(isNaN(amt)||amt<1){toast("Invalid amount");return;}
+  const tpAmt=parseInt(document.getElementById("imTpAmt")?.value)||0;
   const{type,id,upgradeKey,upgradeName}=_investCtx;
   try{
-    if(type==="skill")await api("invest_skill",{skill_id:id,amount:amt});
-    else if(type==="upgrade")await api("invest_upgrade",{skill_id:id,upgrade_key:upgradeKey,upgrade_name:upgradeName,amount:amt});
+    if(type==="skill")await api("invest_skill",{skill_id:id,amount:amt,tp_amount:tpAmt});
+    else if(type==="upgrade")await api("invest_upgrade",{skill_id:id,upgrade_key:upgradeKey,upgrade_name:upgradeName,amount:amt,tp_amount:tpAmt});
     else if(type==="setitem")await api("invest_set_item",{set_item_id:id,amount:amt});
     toast(`Invested ${amt} point${amt!==1?'s':''}!`);
     document.getElementById("modalBg").classList.remove("open");
     ISTATE=await api("get_investiture_state");
     renderInvestiture();
+    renderActionEconomy();
   }catch(e){toast("Error: "+e.message);}
 }
 async function showIpLog(){
@@ -1774,6 +1813,20 @@ async function showIpLog(){
       <span class="ip-log-note">${esc(e.note||"")}</span>
       <span class="ip-log-date">${fmtDate(e.created_at)}</span>
     </div>`).join(""):`<div class="empty">No log entries yet.</div>`}
+    </div>
+    <div class="modal-actions"><button class="mini-btn go" onclick="document.getElementById('modalBg').classList.remove('open')">Close</button></div>`;
+  mb.classList.add("open");
+}
+async function showTpLog(){
+  const mb=document.getElementById("modalBg"),m=document.getElementById("modal");
+  const log=(ISTATE?.tp_log||ISTATE?.pool?.tp_log||[]).slice().reverse();
+  m.innerHTML=`<h3>Training Point Log</h3><div class="msub">History of TP gains and usage.</div>
+    <div style="max-height:55vh;overflow-y:auto">
+    ${log.length?log.map(e=>`<div class="ip-log-item">
+      <span class="ip-log-amt ${e.amount>=0?'pos':'neg'}" style="${e.amount<0?'color:#c084fc':''}">${e.amount>=0?'+':''}${e.amount}</span>
+      <span class="ip-log-note">${esc(e.note||"")}</span>
+      <span class="ip-log-date">${fmtDate(e.created_at)}</span>
+    </div>`).join(""):`<div class="empty">No TP log entries yet.</div>`}
     </div>
     <div class="modal-actions"><button class="mini-btn go" onclick="document.getElementById('modalBg').classList.remove('open')">Close</button></div>`;
   mb.classList.add("open");
@@ -1817,30 +1870,67 @@ function investBurnoutUpgrade(presetAmt){
   if(maxAfford<1){toast("Not enough points");return;}
   const mb=document.getElementById("modalBg"),m=document.getElementById("modal");
   const bc=getBurnoutCaps();
+  const showTpChoice=tp>0;
   m.innerHTML=`<h3>Raise Burnout Caps</h3>
     <div class="msub">All 3 thresholds raised by the same amount.</div>
-    <div style="margin-bottom:6px;color:var(--txt-dim);font-size:.88rem">Available IP: <b style="color:var(--pos-bright);font-family:'Cinzel',serif">${ap}</b>${tp>0?` &nbsp;|&nbsp; Training Pts: <b style="color:#c084fc;font-family:'Cinzel',serif">${tp}</b>`:''}</div>
-    ${tp>0?`<div style="margin-bottom:8px;color:#c084fc;font-size:.78rem;font-style:italic">TP is used first.</div>`:''}
+    <div style="margin-bottom:6px;color:var(--txt-dim);font-size:.88rem">Available IP: <b style="color:var(--pos-bright);font-family:'Cinzel',serif">${ap}</b>${showTpChoice?` &nbsp;|&nbsp; Training Pts: <b style="color:#c084fc;font-family:'Cinzel',serif">${tp}</b>`:''}</div>
     <div style="margin-bottom:8px;font-size:.82rem;color:var(--txt-dim)">Current caps: <b style="color:var(--gold)">${bc.risk}</b> / <b style="color:var(--blood-bright)">${bc.high}</b> / <b style="color:#fff">${bc.complete}</b></div>
     <div style="display:flex;align-items:center;gap:10px;margin:12px 0">
       <label style="font-size:.66rem;text-transform:uppercase;letter-spacing:.12em;color:var(--gold-dim);font-family:'Cinzel',serif">Amount:</label>
-      <input type="number" id="burnCapAmt" min="1" max="${maxAfford}" value="${Math.min(presetAmt||1,maxAfford)}" style="width:72px;padding:8px;background:var(--ink);border:1px solid var(--edge);border-radius:var(--rad);color:var(--txt);font-size:1rem;text-align:center;font-family:'Cinzel',serif"/>
+      <input type="number" id="burnCapAmt" min="1" max="${maxAfford}" value="${Math.min(presetAmt||1,maxAfford)}" style="width:72px;padding:8px;background:var(--ink);border:1px solid var(--edge);border-radius:var(--rad);color:var(--txt);font-size:1rem;text-align:center;font-family:'Cinzel',serif" oninput="updateBurnTpSplit()"/>
       <div style="display:flex;gap:4px">${quickBtns('burnCapAmt',maxAfford)}</div>
     </div>
+    ${showTpChoice?`<div style="margin:8px 0 10px;border:1px solid var(--edge);border-radius:var(--rad);padding:10px 12px;background:rgba(192,132,252,.04)">
+      <div style="font-size:.66rem;text-transform:uppercase;letter-spacing:.1em;color:#c084fc;font-family:'Cinzel',serif;margin-bottom:6px">Point Source</div>
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+        <label style="display:flex;align-items:center;gap:4px;font-size:.82rem;color:var(--txt-dim);cursor:pointer"><input type="radio" name="burnSrc" value="tp_first" checked onchange="updateBurnTpSplit()"/> TP First</label>
+        <label style="display:flex;align-items:center;gap:4px;font-size:.82rem;color:var(--txt-dim);cursor:pointer"><input type="radio" name="burnSrc" value="ip_first" onchange="updateBurnTpSplit()"/> IP First</label>
+        <label style="display:flex;align-items:center;gap:4px;font-size:.82rem;color:var(--txt-dim);cursor:pointer"><input type="radio" name="burnSrc" value="tp_only" onchange="updateBurnTpSplit()"/> TP Only</label>
+        <label style="display:flex;align-items:center;gap:4px;font-size:.82rem;color:var(--txt-dim);cursor:pointer"><input type="radio" name="burnSrc" value="ip_only" onchange="updateBurnTpSplit()"/> IP Only</label>
+      </div>
+      <div id="burnSplitPreview" style="margin-top:6px;font-size:.78rem;color:var(--txt-faint)"></div>
+    </div>`:''}
+    <input type="hidden" id="burnTpAmt" value="0"/>
     <div class="modal-actions">
       <button class="mini-btn" onclick="document.getElementById('modalBg').classList.remove('open')">Cancel</button>
       <button class="mini-btn go" onclick="confirmBurnoutUpgrade()">Confirm</button>
     </div>`;
   mb.classList.add("open");
+  if(showTpChoice)updateBurnTpSplit();
+}
+function updateBurnTpSplit(){
+  const amtEl=document.getElementById("burnCapAmt");
+  const tpEl=document.getElementById("burnTpAmt");
+  const preview=document.getElementById("burnSplitPreview");
+  if(!amtEl||!tpEl)return;
+  const amt=parseInt(amtEl.value)||0;
+  const tp=ISTATE?.training_points??0;
+  const ip=ISTATE?.available_points??0;
+  const srcEl=document.querySelector('input[name="burnSrc"]:checked');
+  const src=srcEl?srcEl.value:"tp_first";
+  let tpUse=0,ipUse=0;
+  if(src==="tp_first"){tpUse=Math.min(amt,tp);ipUse=amt-tpUse;}
+  else if(src==="ip_first"){ipUse=Math.min(amt,ip);tpUse=amt-ipUse;}
+  else if(src==="tp_only"){tpUse=Math.min(amt,tp);ipUse=0;}
+  else if(src==="ip_only"){tpUse=0;ipUse=Math.min(amt,ip);}
+  tpEl.value=tpUse;
+  if(preview){
+    if(tpUse>0&&ipUse>0)preview.textContent=`Using ${tpUse} TP + ${ipUse} IP`;
+    else if(tpUse>0)preview.textContent=`Using ${tpUse} TP`;
+    else preview.textContent=`Using ${ipUse} IP`;
+    const valid=(tpUse+ipUse)===amt&&tpUse<=tp&&ipUse<=ip;
+    preview.style.color=valid?"var(--pos)":"var(--blood-bright)";
+    if(!valid)preview.textContent+=` (not enough points)`;
+  }
 }
 async function confirmBurnoutUpgrade(){
   const amt=parseInt(document.getElementById("burnCapAmt").value);
   if(isNaN(amt)||amt<1){toast("Invalid amount");return;}
-  const tp=ISTATE.training_points||0;
-  const tpUsed=Math.min(amt,tp);const ipUsed=amt-tpUsed;
-  const costDesc=tpUsed&&ipUsed?`${tpUsed} TP + ${ipUsed} IP`:tpUsed?`${tpUsed} TP`:`${ipUsed} IP`;
+  const tpAmt=parseInt(document.getElementById("burnTpAmt")?.value)||0;
+  const ipUsed=amt-tpAmt;
+  const costDesc=tpAmt&&ipUsed?`${tpAmt} TP + ${ipUsed} IP`:tpAmt?`${tpAmt} TP`:`${ipUsed} IP`;
   if(!confirm(`Raise all caps by ${amt}? Cost: ${costDesc}`))return;
-  try{const r=await api("invest_burnout_upgrade",{amount:amt});ISTATE.burnout_upgrades=r.burnout_upgrades;document.getElementById("modalBg").classList.remove("open");await loadInvestiture();toast("Burnout caps raised by "+amt+"!");}catch(e){toast("Error: "+e.message);}
+  try{const r=await api("invest_burnout_upgrade",{amount:amt,tp_amount:tpAmt});ISTATE.burnout_upgrades=r.burnout_upgrades;document.getElementById("modalBg").classList.remove("open");await loadInvestiture();toast("Burnout caps raised by "+amt+"!");}catch(e){toast("Error: "+e.message);}
 }
 async function adjustCharges(skillId,delta,maxCharges){
   const skill=(ISTATE.skills||[]).find(s=>s.id===skillId);if(!skill)return;
