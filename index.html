@@ -349,12 +349,38 @@ textarea.notes:focus{outline:none;border-color:var(--gold-dim)}
 .charges-ctrl button:hover{background:var(--gold);color:#1a1510;border-color:var(--gold)}
 .charges-ctrl .charges-val{width:40px;height:22px;text-align:center;background:var(--ink2);border-top:1px solid var(--edge2);border-bottom:1px solid var(--edge2);font-family:'Cinzel',serif;font-size:.72rem;color:var(--parch);display:flex;align-items:center;justify-content:center}
 .charges-max{font-size:.62rem;color:var(--txt-faint);margin-left:2px}
-.combat-summary{display:grid;gap:12px}
-.combat-player-card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--edge);border-radius:var(--rad);padding:14px 16px}
-.combat-player-name{font-family:'Cinzel',serif;font-size:.9rem;color:var(--parch);font-weight:600;margin-bottom:8px}
-.combat-row{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:.8rem}
-.combat-row .lbl{color:var(--gold-dim);font-family:'Cinzel',serif;font-size:.6rem;text-transform:uppercase;letter-spacing:.1em;min-width:70px}
-.combat-row .val{color:var(--parch);font-family:'Cinzel',serif;font-weight:600}
+.combat-toolbar{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.combat-tool-btn{font-family:'Cinzel',serif;font-size:.58rem;text-transform:uppercase;letter-spacing:.08em;padding:7px 14px;border:1px solid var(--edge2);border-radius:var(--rad);color:var(--txt-dim);background:var(--panel);transition:.15s;cursor:pointer}
+.combat-tool-btn:hover{color:var(--parch);border-color:var(--gold-dim);background:var(--panel2)}
+.combat-tool-btn.danger{border-color:var(--blood);color:var(--blood-bright)}
+.combat-tool-btn.danger:hover{background:rgba(158,43,43,.15);border-color:var(--blood-bright)}
+.combat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:10px}
+.combat-player-card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--edge);border-radius:6px;padding:12px 14px;transition:border-color .2s}
+.combat-player-card.ia-shortage{border-color:var(--blood)}
+.combat-card-header{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:6px}
+.combat-player-name{font-family:'Cinzel',serif;font-size:.85rem;color:var(--parch);font-weight:600}
+.combat-card-btns{display:flex;gap:4px}
+.combat-card-btn{font-family:'Cinzel',serif;font-size:.5rem;text-transform:uppercase;letter-spacing:.06em;padding:3px 8px;border:1px solid var(--edge);border-radius:3px;color:var(--txt-faint);background:none;cursor:pointer;transition:.15s}
+.combat-card-btn:hover{color:var(--parch);border-color:var(--gold-dim)}
+.combat-actions-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px}
+.combat-action-group{display:flex;align-items:center;gap:3px}
+.combat-action-label{font-family:'Cinzel',serif;font-size:.5rem;text-transform:uppercase;letter-spacing:.06em;color:var(--gold-dim);white-space:nowrap}
+.combat-haste-tag{font-size:.5rem;color:var(--gold);font-family:'Cinzel',serif;text-transform:uppercase;letter-spacing:.06em}
+.dm-action-slot.burn-locked{background:rgba(201,162,75,.18);border-color:var(--gold-dim);color:var(--gold);font-weight:700;opacity:.7}
+.combat-burn-info{font-size:.6rem;color:var(--gold-dim);font-style:italic;margin-bottom:6px;line-height:1.4}
+.combat-burn-info.shortage{color:var(--blood-bright);font-weight:700;font-style:normal}
+.combat-burnout-row{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.combat-burnout-label{font-family:'Cinzel',serif;font-size:.55rem;text-transform:uppercase;letter-spacing:.08em;color:var(--gold-dim);min-width:50px}
+.combat-burnout-bar{flex:1;height:6px;background:var(--ink);border:1px solid var(--edge);border-radius:3px;overflow:hidden}
+.combat-burnout-fill{height:100%;border-radius:3px;transition:width .3s}
+.combat-burnout-val{font-family:'Cinzel',serif;font-size:.7rem;font-weight:600;min-width:45px;text-align:right}
+.combat-charges-wrap{display:flex;flex-wrap:wrap;gap:4px 8px;margin-top:4px}
+.combat-charge{font-size:.68rem;display:inline-flex;align-items:center;gap:3px}
+.combat-charge-name{color:var(--txt-dim)}
+.combat-charge-tag{font-size:.48rem;text-transform:uppercase;letter-spacing:.04em;padding:1px 4px;border-radius:2px;font-weight:700;font-family:'Cinzel',serif}
+.combat-charge-tag.active{color:var(--pos);background:rgba(79,157,107,.15)}
+.combat-charge-tag.burn{color:var(--gold);background:rgba(201,162,75,.15)}
+.combat-charge-tag.flare{color:var(--blood-bright);background:rgba(200,65,63,.15)}
 .combat-metal-row{display:flex;align-items:center;gap:6px;padding:3px 0;font-size:.78rem}
 .combat-metal-row .metal-name{color:var(--txt-dim);min-width:80px}
 .combat-metal-row .metal-charges{color:var(--gold);font-family:'Cinzel',serif;font-weight:600}
@@ -529,6 +555,9 @@ html.theme-parchment{
 .ae-haste label{font-size:.52rem;text-transform:uppercase;letter-spacing:.08em;color:var(--txt-dim);font-family:'Cinzel',serif;cursor:pointer}
 .ae-haste input[type=checkbox]{accent-color:var(--gold);width:13px;height:13px;cursor:pointer}
 .ae-sep{width:1px;background:var(--edge);align-self:stretch;margin:0 4px;min-height:20px}
+.ae-slot.burn-locked{background:rgba(201,162,75,.18);border-color:var(--gold-dim);color:var(--gold);cursor:default;font-weight:700;opacity:.7}
+.ae-burn-info{font-size:.62rem;color:var(--gold-dim);font-style:italic;margin-top:4px;width:100%}
+.ae-burn-info.shortage{color:var(--blood-bright);font-weight:700;font-style:normal}
 .ae-rest-btns{display:flex;gap:5px;margin-top:6px;flex-wrap:wrap;align-items:center}
 .ae-rest-btn{font-size:.56rem;text-transform:uppercase;letter-spacing:.08em;font-family:'Cinzel',serif;padding:5px 10px;border:1px solid var(--edge2);border-radius:var(--rad);color:var(--txt-dim);transition:.15s;background:var(--panel)}
 .ae-rest-btn:hover{border-color:var(--gold-dim);color:var(--parch);background:rgba(201,162,75,.06)}
@@ -608,8 +637,8 @@ html.theme-parchment{
     <div class="brand"><div><h1>D&amp;D Hub</h1><small>IDontAName's Campaign</small></div></div>
     <div class="hub-tabs" id="hubTabs">
       <button class="hub-tab active" data-tab="honor">Honor Tracker</button>
-      <button class="hub-tab" data-tab="invest">Player Panel</button>
-      <button class="hub-tab" data-tab="inbox">Inbox<span class="tab-badge" id="inboxBadge" style="display:none">0</span></button>
+      <button class="hub-tab" id="investTabBtn" data-tab="invest">Player Panel</button>
+      <button class="hub-tab" id="inboxTabBtn" data-tab="inbox">Inbox<span class="tab-badge" id="inboxBadge" style="display:none">0</span></button>
       <button class="hub-tab" id="dmTabBtn" data-tab="dmpanel" style="display:none">DM Panel</button>
     </div>
     <div class="topbar-right">
@@ -1072,10 +1101,12 @@ async function enterHub(){
   if(ME.is_dm){
     try{players=(await api("list_players")).players.filter(p=>!p.is_dm);}catch(e){}
     document.getElementById("dmTabBtn").style.display="flex";
+    document.getElementById("investTabBtn").style.display="none";
+    document.getElementById("inboxTabBtn").style.display="none";
     addDMRosterButtons();
   }
   await refreshState();
-  loadInboxBadge();
+  if(!ME.is_dm)loadInboxBadge();
 }
 function updateWhoami(){
   const el=document.getElementById("whoami");
@@ -2002,20 +2033,20 @@ async function loadDmSub(sub){
 
 // --- DM: COMBAT SUMMARY ---
 async function renderDmCombatCombined(c){
-  c.innerHTML='<h2>Combat</h2><div class="spinner"></div>';
+  c.innerHTML='<h2>Combat Dashboard</h2><div class="spinner"></div>';
   try{
     const[combatR,actionR]=await Promise.all([api("dm_get_combat_summary"),api("dm_get_action_panel")]);
     const combatMap={};(combatR.players||[]).forEach(p=>{combatMap[p.account_id]=p;});
     const actionMap={};(actionR.players||[]).forEach(p=>{actionMap[p.account_id]=p;});
     const allIds=[...new Set([...Object.keys(combatMap),...Object.keys(actionMap)])];
-    let html=`<h2>Combat</h2>
-      <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">
-        <button class="mini-btn danger" onclick="dmNewRound()">New Round</button>
-        <button class="mini-btn danger" onclick="dmResetCombat(null,'burnout')">Reset All Burnout</button>
-        <button class="mini-btn danger" onclick="dmResetCombat(null,'charges')">Reset All Charges</button>
-        <button class="mini-btn" onclick="loadDmSub('combat')">Refresh</button>
+    let html=`<h2>Combat Dashboard</h2>
+      <div class="combat-toolbar">
+        <button class="combat-tool-btn danger" onclick="dmNewRound()">New Round</button>
+        <button class="combat-tool-btn danger" onclick="dmResetCombat(null,'burnout')">Reset All Burnout</button>
+        <button class="combat-tool-btn danger" onclick="dmResetCombat(null,'charges')">Reset All Charges</button>
+        <button class="combat-tool-btn" onclick="loadDmSub('combat')">Refresh</button>
       </div>
-      <div class="combat-summary">`;
+      <div class="combat-grid">`;
     for(const aid of allIds){
       const cp=combatMap[aid]||{};
       const ap=actionMap[aid]||{};
@@ -2029,53 +2060,77 @@ async function renderDmCombatCombined(c){
       const rc=ap.reaction_count??1;
       const st=ap.action_state||{};
       const haste=!!st.haste;
-      const slotHtml=(key,label)=>`<div class="dm-action-slot${st[key]?' used':''}">${label}</div>`;
-      let actionsRow=`<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:6px 0">`;
-      actionsRow+=`<div class="dm-action-group-label" style="margin:0">Act</div><div class="dm-action-slots" style="margin:0">${slotHtml('action','Act')}${haste?slotHtml('haste_action','Hst'):''}</div>`;
-      actionsRow+=`<div class="dm-action-group-label" style="margin:0">Bns</div><div class="dm-action-slots" style="margin:0">${slotHtml('bonus','Bns')}</div>`;
-      actionsRow+=`<div class="dm-action-group-label" style="margin:0">Rct</div><div class="dm-action-slots" style="margin:0">`;
+      const burningKeys=Object.keys(st.burning||{});
+      const numBurning=burningKeys.length;
+      const pmcTier=cp.pmc_tier??0;
+      const pmcMetalsPerIA=[2,3,4,5,6][pmcTier]||2;
+      const burningIACost=numBurning>0?Math.ceil(numBurning/pmcMetalsPerIA):0;
+      const freeIA=invested-burningIACost;
+      const iaShortage=burningIACost>invested;
+      const slotHtml=(key,label,burnLocked)=>{
+        if(burnLocked)return `<div class="dm-action-slot burn-locked">${label}</div>`;
+        return `<div class="dm-action-slot${st[key]?' used':''}">${label}</div>`;
+      };
+      let actionsRow=`<div class="combat-actions-row">`;
+      actionsRow+=`<div class="combat-action-group"><span class="combat-action-label">Act</span><div class="dm-action-slots">${slotHtml('action','Act')}${haste?slotHtml('haste_action','Hst'):''}</div></div>`;
+      actionsRow+=`<div class="combat-action-group"><span class="combat-action-label">Bns</span><div class="dm-action-slots">${slotHtml('bonus','Bns')}</div></div>`;
+      actionsRow+=`<div class="combat-action-group"><span class="combat-action-label">Rct</span><div class="dm-action-slots">`;
       for(let i=0;i<rc;i++){const key=i===0?'reaction':`reaction_${i+1}`;actionsRow+=slotHtml(key,'Rct');}
-      actionsRow+=`</div>`;
+      actionsRow+=`</div></div>`;
       if(invested>0){
-        actionsRow+=`<div class="dm-action-group-label" style="margin:0">Inv (${invested})</div><div class="dm-action-slots" style="margin:0">`;
-        for(let i=0;i<invested;i++){actionsRow+=slotHtml(`invested_${i+1}`,'Inv');}
-        actionsRow+=`</div>`;
+        actionsRow+=`<div class="combat-action-group"><span class="combat-action-label">Inv (${invested})</span><div class="dm-action-slots">`;
+        for(let i=0;i<invested;i++){
+          const idx=i+1;const key=`invested_${idx}`;
+          const burnLocked=i>=freeIA&&burningIACost>0;
+          actionsRow+=slotHtml(key,'Inv',burnLocked);
+        }
+        actionsRow+=`</div></div>`;
       }
-      if(haste)actionsRow+=`<span style="font-size:.55rem;color:var(--gold)">Haste</span>`;
+      if(haste)actionsRow+=`<span class="combat-haste-tag">Haste</span>`;
       actionsRow+=`</div>`;
+      let burningInfo="";
+      if(numBurning>0){
+        burningInfo=`<div class="combat-burn-info${iaShortage?' shortage':''}">Burning ${numBurning} metal${numBurning!==1?'s':''}: ${burningKeys.map(k=>{const m=METALS[k];const fl=st.flaring&&st.flaring[k];return (m?m.name:k)+(fl?' (flare)':'');}).join(', ')} — ${burningIACost} IA (PMC T${pmcTier})${iaShortage?' — NOT ENOUGH IA':''}</div>`;
+      }
       let chargesHTML="";
       if(cp.metal_charges&&cp.metal_charges.length){
-        chargesHTML=cp.metal_charges.map(mc=>{
+        const activeMetals=cp.metal_charges.filter(mc=>mc.vial_active||(st.burning&&st.burning[mc.skill_key]));
+        const inactiveMetals=cp.metal_charges.filter(mc=>!mc.vial_active&&!(st.burning&&st.burning[mc.skill_key]));
+        const renderCharge=(mc)=>{
           const m=METALS[mc.skill_key];const maxC=m?m.charges:0;
           const cur=mc.current_charges!=null?mc.current_charges:maxC;
-          const chargeColor=maxC<=0?"var(--txt-dim)":cur<=Math.floor(maxC*0.25)?"var(--blood-bright)":cur<=Math.floor(maxC*0.5)?"var(--gold)":"var(--pos)";
+          const pct=maxC>0?cur/maxC:0;
+          const chargeColor=maxC<=0?"var(--txt-dim)":pct<=0.25?"var(--blood-bright)":pct<=0.5?"var(--gold)":"var(--pos)";
           const isBurning=st.burning&&st.burning[mc.skill_key];
           const isFlaring=st.flaring&&st.flaring[mc.skill_key];
-          const burnIcon=isFlaring?' [FLARE]':isBurning?' [BURN]':mc.vial_active?' [ACTIVE]':'';
-          const burnStyle=isFlaring?'color:var(--blood-bright);font-weight:700':isBurning?'color:var(--gold);font-weight:700':'';
-          return `<span style="font-size:.7rem;color:${chargeColor}">${esc(mc.skill_name)} ${cur}/${maxC}${burnIcon?`<span style="font-size:.55rem;${burnStyle}">${burnIcon}</span>`:''}</span>`;
-        }).join(`<span style="color:var(--edge);margin:0 3px">|</span>`);
+          const tag=isFlaring?'FLARE':isBurning?'BURN':mc.vial_active?'ACTIVE':'';
+          const tagClass=isFlaring?'flare':isBurning?'burn':'active';
+          return `<span class="combat-charge"><span class="combat-charge-name">${esc(mc.skill_name)}</span> <span style="color:${chargeColor}">${cur}/${maxC}</span>${tag?`<span class="combat-charge-tag ${tagClass}">${tag}</span>`:''}</span>`;
+        };
+        if(activeMetals.length)chargesHTML+=activeMetals.map(renderCharge).join('');
+        if(inactiveMetals.length)chargesHTML+=inactiveMetals.map(renderCharge).join('');
       }
-      const burningKeys=Object.keys(st.burning||{});
-      const activeVialsHTML=(!chargesHTML&&burningKeys.length)?`<div style="font-size:.65rem;color:var(--gold);margin-top:2px">Burning: ${burningKeys.map(k=>{const m=METALS[k];return m?m.name:k;}).join(', ')}</div>`:'';
-      html+=`<div class="combat-player-card">
-        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px">
+      html+=`<div class="combat-player-card${iaShortage?' ia-shortage':''}">
+        <div class="combat-card-header">
           <div class="combat-player-name">${esc(name)}</div>
-          <div style="display:flex;gap:4px">
-            <button class="mini-btn" style="font-size:.5rem;padding:3px 7px" onclick="dmResetCombat('${aid}','burnout')">Reset Bu</button>
-            <button class="mini-btn" style="font-size:.5rem;padding:3px 7px" onclick="dmResetCombat('${aid}','charges')">Reset Chg</button>
+          <div class="combat-card-btns">
+            <button class="combat-card-btn" onclick="dmResetCombat('${aid}','burnout')">Reset Bu</button>
+            <button class="combat-card-btn" onclick="dmResetCombat('${aid}','charges')">Reset Chg</button>
           </div>
         </div>
         ${actionsRow}
-        <div class="combat-row"><span class="lbl">Burnout</span><span class="val" style="color:${burnoutColor}">${burnout}/${bRisk}</span></div>
-        <div style="height:5px;background:var(--ink);border:1px solid var(--edge);border-radius:3px;margin:3px 0 6px;overflow:hidden"><div style="height:100%;width:${burnoutPct}%;background:${burnoutColor};border-radius:3px;transition:width .3s"></div></div>
-        ${chargesHTML?`<div style="margin-top:2px">${chargesHTML}</div>`:''}
-        ${activeVialsHTML}
+        ${burningInfo}
+        <div class="combat-burnout-row">
+          <span class="combat-burnout-label">Burnout</span>
+          <div class="combat-burnout-bar"><div class="combat-burnout-fill" style="width:${burnoutPct}%;background:${burnoutColor}"></div></div>
+          <span class="combat-burnout-val" style="color:${burnoutColor}">${burnout}/${bRisk}</span>
+        </div>
+        ${chargesHTML?`<div class="combat-charges-wrap">${chargesHTML}</div>`:''}
       </div>`;
     }
     html+=`</div>`;
     c.innerHTML=html;
-  }catch(e){c.innerHTML=`<h2>Combat</h2><div class="empty" style="color:var(--blood-bright)">${esc(e.message)}</div>`;}
+  }catch(e){c.innerHTML=`<h2>Combat Dashboard</h2><div class="empty" style="color:var(--blood-bright)">${esc(e.message)}</div>`;}
 }
 async function dmResetCombat(accountId,resetType){
   const label=accountId?"this player's":"ALL players'";
@@ -2413,6 +2468,20 @@ async function dmShowIpLog(pid){
 const BASE_METALS=["aluminum","gold","copper","bronze","zinc","brass","iron","steel","tin","pewter"];
 let AE_STATE={};
 function aeModifier(score){return Math.floor((score-10)/2);}
+function getPassiveMetalControl(){
+  const pmc=(ISTATE.skills||[]).find(s=>s.skill_key==="passives"&&(s.skill_type==="passive"||s.skill_type==="allomancy"));
+  if(!pmc)return{tier:0,metalsPerIA:2};
+  const tier=calcAlloTier(pmc.points_invested,pmc.is_mastered,"passives");
+  const metalsPerIA=[2,3,4,5,6][tier]||2;
+  return{tier,metalsPerIA};
+}
+function calcBurningIACost(){
+  const burning=AE_STATE.burning||{};
+  const numBurning=Object.keys(burning).length;
+  if(numBurning===0)return 0;
+  const pmc=getPassiveMetalControl();
+  return Math.ceil(numBurning/pmc.metalsPerIA);
+}
 function renderActionEconomy(){
   if(!ISTATE)return;
   const wrap=document.getElementById("aeWrap");
@@ -2424,7 +2493,11 @@ function renderActionEconomy(){
   AE_STATE=ISTATE.action_state||{};
   const haste=!!AE_STATE.haste;
   const slotsEl=document.getElementById("aeSlots");
-  const slot=(key,label)=>`<div class="ae-slot${AE_STATE[key]?' used':''}" onclick="toggleAeSlot('${key}')">${AE_STATE[key]?'Used':label}</div>`;
+  const burningIACost=calcBurningIACost();
+  const slot=(key,label,burnLocked)=>{
+    if(burnLocked)return `<div class="ae-slot burn-locked" title="Reserved for passive burning">${label}</div>`;
+    return `<div class="ae-slot${AE_STATE[key]?' used':''}" onclick="toggleAeSlot('${key}')">${AE_STATE[key]?'Used':label}</div>`;
+  };
   let html=`<div class="ae-group"><div class="ae-group-label">Act</div><div class="ae-slots">${slot('action','Act')}${haste?slot('haste_action','Hst'):''}</div></div>`;
   html+=`<div class="ae-sep"></div>`;
   html+=`<div class="ae-group"><div class="ae-group-label">Bns</div><div class="ae-slots">${slot('bonus','Bns')}</div></div>`;
@@ -2434,11 +2507,22 @@ function renderActionEconomy(){
   html+=`</div></div>`;
   if(invested>0){
     html+=`<div class="ae-sep"></div>`;
+    const freeIA=invested-burningIACost;
     html+=`<div class="ae-group"><div class="ae-group-label">Inv (${invested})</div><div class="ae-slots">`;
-    for(let i=0;i<invested;i++){html+=slot(`invested_${i+1}`,'Inv');}
+    for(let i=0;i<invested;i++){
+      const idx=i+1;const key=`invested_${idx}`;
+      const burnLocked=i>=freeIA&&burningIACost>0;
+      html+=slot(key,'Inv',burnLocked);
+    }
     html+=`</div></div>`;
   }
   html+=`<div class="ae-haste"><input type="checkbox" id="aeHaste" ${haste?'checked':''} onchange="toggleHaste(this.checked)"/><label for="aeHaste">Haste</label></div>`;
+  if(burningIACost>0){
+    const pmc=getPassiveMetalControl();
+    const numBurning=Object.keys(AE_STATE.burning||{}).length;
+    const shortage=burningIACost>invested;
+    html+=`<div class="ae-burn-info${shortage?' shortage':''}">Burning ${numBurning} metal${numBurning!==1?'s':''} — ${burningIACost} IA reserved (PMC Tier ${pmc.tier}: ${pmc.metalsPerIA}/IA)${shortage?' — NOT ENOUGH IA':''}</div>`;
+  }
   slotsEl.innerHTML=html;
   renderRestButtons();
   renderDrinkButtons();

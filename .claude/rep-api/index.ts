@@ -679,12 +679,19 @@ Deno.serve(async (req) => {
         const { data: skills } = await admin.from("player_skills").select("id, skill_type, skill_key, skill_name, current_charges, vial_active").eq("account_id", (acct as any).id);
         const alloSkills = (skills ?? []).filter((s: any) => s.skill_type === "allomancy");
         const hasSignets = (skills ?? []).some((s: any) => s.skill_type === "signet");
+        const pmcSkill = (skills ?? []).find((s: any) => s.skill_key === "passives" && (s.skill_type === "passive" || s.skill_type === "allomancy"));
+        const pmcPts = pmcSkill ? pmcSkill.points_invested : 0;
+        const pmcMastered = pmcSkill ? !!pmcSkill.is_mastered : false;
+        const ALLO_T = [0,1,3,6,10]; const ALLO_TM = [0,0,2,5,9];
+        const pmcThresh = pmcMastered ? ALLO_TM : ALLO_T;
+        let pmcTier = 0; for (let i = 1; i <= 4; i++) { if (pmcPts >= pmcThresh[i]) pmcTier = i; }
         result.push({
           account_id: (acct as any).id,
           character_name: (acct as any).character_name,
           burnout_current: (pool as any)?.burnout_current ?? 0,
           burnout_upgrades: (pool as any)?.burnout_upgrades ?? 0,
           has_signets: hasSignets,
+          pmc_tier: pmcTier,
           metal_charges: alloSkills.map((s: any) => ({ skill_id: s.id, skill_key: s.skill_key, skill_name: s.skill_name, current_charges: s.current_charges, vial_active: !!s.vial_active })),
         });
       }
