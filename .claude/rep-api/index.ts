@@ -73,6 +73,12 @@ async function buildGroupsList() {
   return (groups ?? []).map((g: any) => ({ ...g, rep_npcs: membersByGroup[g.id] ?? [] }));
 }
 
+const METAL_CHARGES: Record<string, number> = {
+  iron:50,steel:50,pewter:20,tin:150,zinc:75,brass:75,copper:150,bronze:150,
+  duralumin:3,aluminum:1,nicrosil:3,chromium:10,gold:0,electrum:0,cadmium:0,
+  bendalloy:0,atium:0,
+};
+
 // Level -> cumulative IP table
 const LEVEL_IP: Record<number, number> = {
   1:1,2:2,3:4,4:6,5:9,6:12,7:16,8:20,9:25,10:30,
@@ -670,7 +676,7 @@ Deno.serve(async (req) => {
       const result = [];
       for (const acct of accts ?? []) {
         const { data: pool } = await admin.from("player_investiture").select("burnout_current, training_points, burnout_upgrades").eq("account_id", (acct as any).id).maybeSingle();
-        const { data: skills } = await admin.from("player_skills").select("id, skill_type, skill_key, skill_name, current_charges").eq("account_id", (acct as any).id);
+        const { data: skills } = await admin.from("player_skills").select("id, skill_type, skill_key, skill_name, current_charges, vial_active").eq("account_id", (acct as any).id);
         const alloSkills = (skills ?? []).filter((s: any) => s.skill_type === "allomancy");
         const hasSignets = (skills ?? []).some((s: any) => s.skill_type === "signet");
         result.push({
@@ -679,7 +685,7 @@ Deno.serve(async (req) => {
           burnout_current: (pool as any)?.burnout_current ?? 0,
           burnout_upgrades: (pool as any)?.burnout_upgrades ?? 0,
           has_signets: hasSignets,
-          metal_charges: alloSkills.map((s: any) => ({ skill_id: s.id, skill_key: s.skill_key, skill_name: s.skill_name, current_charges: s.current_charges })),
+          metal_charges: alloSkills.map((s: any) => ({ skill_id: s.id, skill_key: s.skill_key, skill_name: s.skill_name, current_charges: s.current_charges, vial_active: !!s.vial_active })),
         });
       }
       return json({ players: result });
@@ -942,12 +948,42 @@ Deno.serve(async (req) => {
     }
     if (action === "dm_new_round") {
       if (!me.is_dm) return json({ error: "Not DM" }, 403);
-      await admin.from("player_investiture")
-        .update({ action_state: {}, updated_at: new Date().toISOString() })
+      const { data: pools } = await admin.from("player_investiture")
+        .select("account_id, action_state")
         .neq("account_id", "00000000-0000-0000-0000-000000000000");
+      const logEntries: any[] = [];
+      for (const p of pools ?? []) {
+        const st = (p as any).action_state ?? {};
+        const burning = st.burning ?? {};
+        const flaring = st.flaring ?? {};
+        const newState: any = {};
+        if (Object.keys(burning).length) newState.burning = burning;
+        if (Object.keys(flaring).length) newState.flaring = flaring;
+        if (st.haste) newState.haste = true;
+        await admin.from("player_investiture")
+          .update({ action_state: newState, updated_at: new Date().toISOString() })
+          .eq("account_id", (p as any).account_id);
+        const burnKeys = Object.keys(burning);
+        if (burnKeys.length) {
+          for (const key of burnKeys) {
+            const cost = flaring[key] ? 2 : 1;
+            const { data: skill } = await admin.from("player_skills")
+              .select("id, current_charges, skill_name")
+              .eq("account_id", (p as any).account_id)
+              .eq("skill_key", key).eq("skill_type", "allomancy").maybeSingle();
+            if (skill) {
+              const maxC = (METAL_CHARGES as any)[key] ?? 0;
+              const cur = (skill as any).current_charges != null ? (skill as any).current_charges : maxC;
+              const newC = Math.max(0, cur - cost);
+              await admin.from("player_skills").update({ current_charges: newC }).eq("id", (skill as any).id);
+              logEntries.push({ account_id: (p as any).account_id, character_name: "", event_type: "charge_burn", details: `${(skill as any).skill_name} ${cur}→${newC} (${flaring[key]?'flaring':'burning'})` });
+            }
+          }
+        }
+      }
       await admin.from("dm_console_log").insert({
         account_id: me.id, character_name: "DM",
-        event_type: "new_round", details: "New round — all action states reset",
+        event_type: "new_round", details: `New round — action states reset${logEntries.length?`, ${logEntries.length} charge deductions`:''}`,
       });
       return json({ ok: true });
     }

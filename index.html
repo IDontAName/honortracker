@@ -1141,14 +1141,18 @@ function switchTab(tab){
   activeTab=tab;
   document.querySelectorAll(".hub-tab").forEach(b=>b.classList.toggle("active",b.dataset.tab===tab));
   document.querySelectorAll(".tab-section").forEach(s=>s.classList.toggle("active",s.id==="tab-"+tab));
-  if(tab==="invest")loadInvestiture();
+  if(_investPollTimer){clearInterval(_investPollTimer);_investPollTimer=null;}
+  if(tab==="invest"){loadInvestiture();_investPollTimer=setInterval(()=>{if(activeTab==="invest")loadInvestiture();},15000);}
   if(tab==="inbox")loadInbox();
   if(tab==="dmpanel")loadDmSub(activeDmSub);
 }
+let _dmPollTimer=null,_investPollTimer=null;
 function switchDmSub(sub){
   activeDmSub=sub;
+  if(_dmPollTimer){clearInterval(_dmPollTimer);_dmPollTimer=null;}
   document.querySelectorAll(".dm-nav-btn").forEach(b=>b.classList.toggle("active",b.dataset.dm===sub));
   loadDmSub(sub);
+  if(sub==="combat")_dmPollTimer=setInterval(()=>{if(activeDmSub==="combat")loadDmSub("combat");},10000);
 }
 // --- STATE ---
 const F={q:"",group:"",status:"",sort:"default",hideDead:false};
@@ -1594,7 +1598,7 @@ function renderAlloCard(skill){
         ${canInvest&&tier<maxTiers?`<button class="invest-btn" onclick="openInvestModal('skill','${skill.id}','${esc(name)}',${nextCost})">Invest (${nextCost} pt${nextCost!==1?'s':''})</button>`
           :tier>=maxTiers?`<span style="font-size:.68rem;color:var(--gold-dim);font-style:italic">Max tier reached</span>`
           :`<button class="invest-btn" disabled>No IP available</button>`}
-      </div>${m&&m.charges?(()=>{const vialActive=!!skill.vial_active;const cur=skill.current_charges!=null?skill.current_charges:m.charges;return vialActive?`<div class="charges-row"><span class="charges-label">Charges</span><div class="charges-ctrl"><button onclick="adjustCharges('${skill.id}',-1,${m.charges})">-</button><div class="charges-val" id="charges_${skill.id}">${cur}</div><button onclick="adjustCharges('${skill.id}',1,${m.charges})">+</button></div><span class="charges-max">/ ${m.charges}</span><button class="mini-btn" style="font-size:.5rem;padding:2px 6px;margin-left:auto" onclick="setChargesManual('${skill.id}',${m.charges})">Set</button></div>`:`<div class="charges-row" style="opacity:.5"><span class="charges-label">Charges</span><span style="font-size:.72rem;color:var(--txt-faint);font-style:italic">Locked — drink vial to unlock</span><span class="charges-max" style="margin-left:auto">${cur}/${m.charges}</span></div>`;})():''}${baseHTML}${tiersHTML}
+      </div>${m&&m.charges?(()=>{const vialActive=!!skill.vial_active;const cur=skill.current_charges!=null?skill.current_charges:m.charges;const burning=AE_STATE.burning&&AE_STATE.burning[skill.skill_key];const flaring=AE_STATE.flaring&&AE_STATE.flaring[skill.skill_key];return vialActive?`<div class="charges-row"><span class="charges-label">Charges</span><div class="charges-ctrl"><button onclick="adjustCharges('${skill.id}',-1,${m.charges})">-</button><div class="charges-val" id="charges_${skill.id}">${cur}</div><button onclick="adjustCharges('${skill.id}',1,${m.charges})">+</button></div><span class="charges-max">/ ${m.charges}</span><button class="mini-btn" style="font-size:.5rem;padding:2px 6px;margin-left:auto" onclick="setChargesManual('${skill.id}',${m.charges})">Set</button></div><div style="display:flex;gap:5px;margin:4px 0 2px;align-items:center"><button class="mini-btn${burning?' go':''}" style="font-size:.48rem;padding:2px 7px" onclick="toggleBurn('${skill.skill_key}')">${burning?'Burning':'Burn'}</button><button class="mini-btn${flaring?' danger':''}" style="font-size:.48rem;padding:2px 7px" onclick="toggleFlare('${skill.skill_key}')" ${!burning?'disabled':''}>${flaring?'Flaring':'Flare'}</button>${burning?`<span style="font-size:.6rem;color:var(--gold);font-style:italic">${flaring?'2x charge/round':'1 charge/round'}</span>`:''}</div>`:`<div class="charges-row" style="opacity:.5"><span class="charges-label">Charges</span><span style="font-size:.72rem;color:var(--txt-faint);font-style:italic">Locked — drink vial to unlock</span><span class="charges-max" style="margin-left:auto">${cur}/${m.charges}</span></div>`;})():''}${baseHTML}${tiersHTML}
     </div>
   </div>`;
 }
@@ -2045,9 +2049,15 @@ async function renderDmCombatCombined(c){
           const m=METALS[mc.skill_key];const maxC=m?m.charges:0;
           const cur=mc.current_charges!=null?mc.current_charges:maxC;
           const chargeColor=maxC<=0?"var(--txt-dim)":cur<=Math.floor(maxC*0.25)?"var(--blood-bright)":cur<=Math.floor(maxC*0.5)?"var(--gold)":"var(--pos)";
-          return `<span style="font-size:.7rem;color:${chargeColor}">${esc(mc.skill_name)} ${cur}/${maxC}</span>`;
+          const isBurning=st.burning&&st.burning[mc.skill_key];
+          const isFlaring=st.flaring&&st.flaring[mc.skill_key];
+          const burnIcon=isFlaring?' [FLARE]':isBurning?' [BURN]':mc.vial_active?' [ACTIVE]':'';
+          const burnStyle=isFlaring?'color:var(--blood-bright);font-weight:700':isBurning?'color:var(--gold);font-weight:700':'';
+          return `<span style="font-size:.7rem;color:${chargeColor}">${esc(mc.skill_name)} ${cur}/${maxC}${burnIcon?`<span style="font-size:.55rem;${burnStyle}">${burnIcon}</span>`:''}</span>`;
         }).join(`<span style="color:var(--edge);margin:0 3px">|</span>`);
       }
+      const burningKeys=Object.keys(st.burning||{});
+      const activeVialsHTML=(!chargesHTML&&burningKeys.length)?`<div style="font-size:.65rem;color:var(--gold);margin-top:2px">Burning: ${burningKeys.map(k=>{const m=METALS[k];return m?m.name:k;}).join(', ')}</div>`:'';
       html+=`<div class="combat-player-card">
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px">
           <div class="combat-player-name">${esc(name)}</div>
@@ -2060,6 +2070,7 @@ async function renderDmCombatCombined(c){
         <div class="combat-row"><span class="lbl">Burnout</span><span class="val" style="color:${burnoutColor}">${burnout}/${bRisk}</span></div>
         <div style="height:5px;background:var(--ink);border:1px solid var(--edge);border-radius:3px;margin:3px 0 6px;overflow:hidden"><div style="height:100%;width:${burnoutPct}%;background:${burnoutColor};border-radius:3px;transition:width .3s"></div></div>
         ${chargesHTML?`<div style="margin-top:2px">${chargesHTML}</div>`:''}
+        ${activeVialsHTML}
       </div>`;
     }
     html+=`</div>`;
@@ -2520,6 +2531,34 @@ async function drinkBaseVial(){
   }catch(e){toast("Error: "+e.message);}
 }
 
+async function toggleBurn(skillKey){
+  if(!AE_STATE.burning)AE_STATE.burning={};
+  const wasBurning=!!AE_STATE.burning[skillKey];
+  if(wasBurning){
+    delete AE_STATE.burning[skillKey];
+    if(AE_STATE.flaring)delete AE_STATE.flaring[skillKey];
+  }else{
+    AE_STATE.burning[skillKey]=true;
+  }
+  const m=METALS[skillKey];const label=m?m.name:skillKey;
+  try{
+    await api("update_action_state",{action_state:AE_STATE,log_event:`${wasBurning?'Stopped burning':'Started burning'} ${label}`});
+    ISTATE.action_state=AE_STATE;
+    renderInvestiture();renderActionEconomy();
+  }catch(e){toast("Error: "+e.message);}
+}
+async function toggleFlare(skillKey){
+  if(!AE_STATE.flaring)AE_STATE.flaring={};
+  const wasFlaring=!!AE_STATE.flaring[skillKey];
+  AE_STATE.flaring[skillKey]=!wasFlaring;
+  if(!AE_STATE.flaring[skillKey])delete AE_STATE.flaring[skillKey];
+  const m=METALS[skillKey];const label=m?m.name:skillKey;
+  try{
+    await api("update_action_state",{action_state:AE_STATE,log_event:`${wasFlaring?'Stopped flaring':'Started flaring'} ${label}`});
+    ISTATE.action_state=AE_STATE;
+    renderInvestiture();renderActionEconomy();
+  }catch(e){toast("Error: "+e.message);}
+}
 // --- DM: ACTION PANEL ---
 async function dmNewRound(){
   if(!confirm("Start a new round? This resets all players' action economy states."))return;
