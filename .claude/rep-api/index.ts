@@ -185,10 +185,13 @@ Deno.serve(async (req) => {
       return json({ npcs: npcsR.data ?? [], scores, notes, is_dm: me.is_dm, honor_score: me.honor_score ?? 0, rep_groups: groupsR.data ?? [] });
     }
     if (action === "poll_scores") {
-      const { data } = await admin.from("rep_scores").select("npc_id, value").eq("account_id", me.id);
+      const [scoresR, poolR] = await Promise.all([
+        admin.from("rep_scores").select("npc_id, value").eq("account_id", me.id),
+        admin.from("player_investiture").select("updated_at").eq("account_id", me.id).maybeSingle(),
+      ]);
       const scores: Record<string,number> = {};
-      (data ?? []).forEach((s: any) => { scores[s.npc_id] = s.value; });
-      return json({ scores, ts: Date.now() });
+      (scoresR.data ?? []).forEach((s: any) => { scores[s.npc_id] = s.value; });
+      return json({ scores, ts: Date.now(), invest_updated_at: (poolR.data as any)?.updated_at ?? null });
     }
     if (action === "set_note") {
       await admin.from("rep_notes").upsert({ account_id: me.id, npc_id: payload.npc_id, body: payload.body??"", updated_at: new Date().toISOString() }, { onConflict: "account_id,npc_id" });
@@ -204,8 +207,9 @@ Deno.serve(async (req) => {
       const { skill_id, amount, tp_amount } = payload;
       const pts = parseInt(amount);
       if (isNaN(pts) || pts < 1) return json({ error: "Invalid amount" }, 400);
-      const tpUse = Math.max(0, parseInt(tp_amount) || 0);
+      const tpUse = Math.min(Math.max(0, parseInt(tp_amount) || 0), pts);
       const ipUse = pts - tpUse;
+      if (ipUse < 0) return json({ error: "Invalid point distribution" }, 400);
       const { data: skill } = await admin.from("player_skills").select("*").eq("id", skill_id).eq("account_id", me.id).maybeSingle();
       if (!skill) return json({ error: "Skill not found" }, 404);
       const state = await getPlayerInvestiture(me.id);
@@ -251,8 +255,9 @@ Deno.serve(async (req) => {
       const { skill_id, upgrade_key, upgrade_name, amount, tp_amount } = payload;
       const pts = parseInt(amount);
       if (isNaN(pts) || pts < 1) return json({ error: "Invalid amount" }, 400);
-      const tpUse = Math.max(0, parseInt(tp_amount) || 0);
+      const tpUse = Math.min(Math.max(0, parseInt(tp_amount) || 0), pts);
       const ipUse = pts - tpUse;
+      if (ipUse < 0) return json({ error: "Invalid point distribution" }, 400);
       const { data: skill } = await admin.from("player_skills").select("*").eq("id", skill_id).eq("account_id", me.id).maybeSingle();
       if (!skill) return json({ error: "Skill not found" }, 404);
       const state = await getPlayerInvestiture(me.id);
@@ -973,7 +978,7 @@ Deno.serve(async (req) => {
         const burnKeys = Object.keys(burning);
         if (burnKeys.length) {
           for (const key of burnKeys) {
-            const cost = flaring[key] ? 2 : 1;
+            const cost = flaring[key] ? 4 : 1;
             const { data: skill } = await admin.from("player_skills")
               .select("id, current_charges, skill_name")
               .eq("account_id", (p as any).account_id)
