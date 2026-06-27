@@ -543,35 +543,35 @@ html.theme-parchment{
 .theme-custom-row input[type=color]{width:40px;height:32px;border:1px solid var(--edge);border-radius:var(--rad);cursor:pointer;background:none;padding:2px}
 
 /* ACTION ECONOMY */
-.ae-wrap{padding:10px 18px 8px;border-bottom:1px solid var(--edge);background:linear-gradient(180deg,rgba(12,11,16,.4),transparent)}
-.ae-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
-.ae-group{display:flex;align-items:center;gap:4px}
-.ae-group-label{font-family:'Cinzel',serif;font-size:.52rem;text-transform:uppercase;letter-spacing:.08em;color:var(--gold-dim);white-space:nowrap}
-.ae-slots{display:flex;gap:3px}
-.ae-slot{width:38px;height:28px;border:1px solid var(--edge2);border-radius:3px;background:var(--panel);cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-size:.48rem;text-transform:uppercase;letter-spacing:.04em;color:var(--txt-dim);transition:border-color .15s,background .15s}
-.ae-slot:hover{border-color:var(--gold-dim)}
-.ae-slot.used{background:var(--gold);border-color:var(--gold-dim);color:#1a1510;font-weight:700}
-.ae-haste{display:flex;align-items:center;gap:4px;margin-left:4px}
-.ae-haste label{font-size:.52rem;text-transform:uppercase;letter-spacing:.08em;color:var(--txt-dim);font-family:'Cinzel',serif;cursor:pointer}
-.ae-haste input[type=checkbox]{accent-color:var(--gold);width:13px;height:13px;cursor:pointer}
-.ae-sep{width:1px;background:var(--edge);align-self:stretch;margin:0 4px;min-height:20px}
+.ae-wrap{padding:14px 18px 12px;border-bottom:1px solid var(--edge);background:linear-gradient(180deg,rgba(12,11,16,.4),transparent)}
+.ae-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.ae-group{display:flex;align-items:center;gap:6px}
+.ae-group-label{font-family:'Cinzel',serif;font-size:.62rem;text-transform:uppercase;letter-spacing:.08em;color:var(--gold-dim);white-space:nowrap}
+.ae-slots{display:flex;gap:4px}
+.ae-slot{width:52px;height:36px;border:1px solid var(--edge2);border-radius:4px;background:var(--panel);cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-size:.58rem;text-transform:uppercase;letter-spacing:.05em;color:var(--txt-dim);transition:border-color .15s,background .15s,box-shadow .15s}
+.ae-slot:hover{border-color:var(--gold-dim);box-shadow:0 0 6px rgba(201,162,75,.15)}
+.ae-slot.used{background:linear-gradient(180deg,var(--gold),var(--gold-dim));border-color:var(--gold-dim);color:#1a1510;font-weight:700;box-shadow:0 2px 8px rgba(201,162,75,.2)}
+.ae-haste{display:flex;align-items:center;gap:5px;margin-left:6px}
+.ae-haste label{font-size:.6rem;text-transform:uppercase;letter-spacing:.08em;color:var(--txt-dim);font-family:'Cinzel',serif;cursor:pointer}
+.ae-haste input[type=checkbox]{accent-color:var(--gold);width:15px;height:15px;cursor:pointer}
+.ae-sep{width:1px;background:var(--edge);align-self:stretch;margin:0 6px;min-height:24px}
 .ae-slot.burn-locked{background:rgba(201,162,75,.18);border-color:var(--gold-dim);color:var(--gold);cursor:default;font-weight:700;opacity:.7}
-.ae-burn-info{font-size:.62rem;color:var(--gold-dim);font-style:italic;margin-top:4px;width:100%}
+.ae-burn-info{font-size:.68rem;color:var(--gold-dim);font-style:italic;margin-top:6px;width:100%}
 .ae-burn-info.shortage{color:var(--blood-bright);font-weight:700;font-style:normal}
-.ae-rest-btns{display:flex;gap:5px;margin-top:6px;flex-wrap:wrap;align-items:center}
-.ae-rest-btn{font-size:.56rem;text-transform:uppercase;letter-spacing:.08em;font-family:'Cinzel',serif;padding:5px 10px;border:1px solid var(--edge2);border-radius:var(--rad);color:var(--txt-dim);transition:.15s;background:var(--panel)}
-.ae-rest-btn:hover{border-color:var(--gold-dim);color:var(--parch);background:rgba(201,162,75,.06)}
-.ae-rest-preview{font-size:.72rem;color:var(--txt-faint);font-style:italic}
-.ae-drink-wrap{margin-top:6px}
-.ae-drink-wrap summary{font-family:'Cinzel',serif;font-size:.54rem;text-transform:uppercase;letter-spacing:.1em;color:var(--gold-dim);cursor:pointer;list-style:none;display:flex;align-items:center;gap:5px}
-.ae-drink-wrap summary::before{content:"▸";font-size:.6rem}
+.ae-rest-btns{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center}
+.ae-rest-btn{font-size:.66rem;text-transform:uppercase;letter-spacing:.08em;font-family:'Cinzel',serif;padding:8px 16px;border:1px solid var(--edge2);border-radius:var(--rad);color:var(--txt-dim);transition:.15s;background:linear-gradient(180deg,var(--panel),var(--panel2))}
+.ae-rest-btn:hover{border-color:var(--gold-dim);color:var(--parch);background:linear-gradient(180deg,var(--panel2),rgba(201,162,75,.08))}
+.ae-rest-preview{font-size:.76rem;color:var(--txt-faint);font-style:italic}
+.ae-drink-wrap{margin-top:8px}
+.ae-drink-wrap summary{font-family:'Cinzel',serif;font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:var(--gold-dim);cursor:pointer;list-style:none;display:flex;align-items:center;gap:5px}
+.ae-drink-wrap summary::before{content:"▸";font-size:.65rem}
 .ae-drink-wrap[open] summary::before{content:"▾"}
-.ae-drink-btns{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px}
-.ae-drink-btn{font-size:.5rem;text-transform:uppercase;letter-spacing:.04em;font-family:'Cinzel',serif;padding:3px 7px;border:1px solid var(--edge2);border-radius:3px;color:var(--txt-dim);transition:.15s;background:var(--ink2)}
-.ae-drink-btn:hover{border-color:var(--gold-dim);color:var(--parch)}
+.ae-drink-btns{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.ae-drink-btn{font-size:.6rem;text-transform:uppercase;letter-spacing:.05em;font-family:'Cinzel',serif;padding:6px 12px;border:1px solid var(--edge2);border-radius:4px;color:var(--txt-dim);transition:.15s;background:linear-gradient(180deg,var(--ink2),var(--ink))}
+.ae-drink-btn:hover{border-color:var(--gold-dim);color:var(--parch);background:linear-gradient(180deg,var(--ink2),rgba(201,162,75,.06))}
 .ae-drink-btn.active{border-color:var(--pos);color:var(--pos-bright)}
 .ae-drink-btn.base10{border-color:var(--gold-dim);color:var(--gold)}
-.ae-drink-btn.base10:hover{background:rgba(201,162,75,.1)}
+.ae-drink-btn.base10:hover{background:linear-gradient(180deg,var(--ink2),rgba(201,162,75,.1))}
 /* Vial locked overlay */
 .vial-locked{opacity:.5;position:relative}
 .vial-locked::after{content:"LOCKED";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:'Cinzel',serif;font-size:.5rem;letter-spacing:.1em;color:var(--txt-faint);background:rgba(12,11,16,.85);padding:2px 6px;border-radius:3px;pointer-events:none}
@@ -613,7 +613,7 @@ html.theme-parchment{
   .ip-pool{flex-wrap:wrap;gap:8px}
   .ip-card{min-width:80px;padding:10px 8px}
   .ae-wrap{padding:8px 10px}
-  .ae-slot{width:34px;height:24px;font-size:.44rem}
+  .ae-slot{width:44px;height:30px;font-size:.52rem}
   .ae-sep{display:none}
 }
 </style>
@@ -687,7 +687,7 @@ html.theme-parchment{
       <div class="ae-row" id="aeSlots"></div>
       <div class="ae-rest-btns" id="aeRestBtns"></div>
       <details class="ae-drink-wrap" id="aeDrinkWrap"><summary>Vials</summary><div class="ae-drink-btns" id="aeDrinkBtns"></div></details>
-      <button class="mini-btn" id="aeSpendTimeBtn" style="display:none;margin-top:6px;font-size:.55rem;padding:3px 10px" onclick="openSpendTimeModal()">Spend Time (Out of Combat)</button>
+      <button class="ae-rest-btn" id="aeSpendTimeBtn" style="display:none;margin-top:8px" onclick="openSpendTimeModal()">Spend Time (Out of Combat)</button>
     </div>
     <div class="invest-header">
       <div class="ip-pool">
@@ -1198,11 +1198,22 @@ async function refreshState(){
 async function refreshSilently(){
   try{const r=await api("get_state");STATE.scores=r.scores||{};render();}catch(e){}
 }
+let _lastInvestUpdatedAt=null;
 async function pollScores(){
   if(!TOKEN)return;
   try{const r=await api("poll_scores");
     const changed=Object.entries(r.scores||{}).some(([id,v])=>STATE.scores[id]!==v)||Object.keys(STATE.scores).some(id=>r.scores[id]===undefined);
     if(changed){STATE.scores=r.scores||{};render();if(selectedId)openSide(selectedId);}
+    if(r.invest_updated_at&&r.invest_updated_at!==_lastInvestUpdatedAt){
+      _lastInvestUpdatedAt=r.invest_updated_at;
+      if(ISTATE){
+        const[state,ciR]=await Promise.all([api("get_investiture_state"),api("list_custom_skills")]);
+        ISTATE=state;customItems=ciR.items||[];
+        const ciMap={};customItems.forEach(ci=>{ciMap[ci.id]=ci;});
+        (ISTATE.skills||[]).forEach(s=>{if(s.skill_type==="custom"&&s.custom_item_id)s._custom_data=ciMap[s.custom_item_id]||null;});
+        renderInvestiture();renderActionEconomy();
+      }
+    }
   }catch(e){}
 }
 function startPolling(){stopPolling();_pollTimer=setInterval(pollScores,8000);}
@@ -1511,6 +1522,7 @@ async function loadInvestiture(){
   try{
     const[state,ciR]=await Promise.all([api("get_investiture_state"),api("list_custom_skills")]);
     ISTATE=state;customItems=ciR.items||[];
+    _lastInvestUpdatedAt=ISTATE.pool?.updated_at||null;
     const ciMap={};customItems.forEach(ci=>{ciMap[ci.id]=ci;});
     (ISTATE.skills||[]).forEach(s=>{if(s.skill_type==="custom"&&s.custom_item_id)s._custom_data=ciMap[s.custom_item_id]||null;});
     renderInvestiture();
@@ -1532,6 +1544,8 @@ function renderInvestiture(){
   const skills=ISTATE.skills||[];
   const setItems=ISTATE.set_items||[];
   const alloSkills=skills.filter(s=>s.skill_type==="allomancy"||s.skill_type==="passive");
+  const burning=AE_STATE.burning||{};
+  alloSkills.sort((a,b)=>{const ab=burning[a.skill_key]?1:0;const bb=burning[b.skill_key]?1:0;return bb-ab;});
   const signetSkills=skills.filter(s=>s.skill_type==="signet");
   const customSkills=skills.filter(s=>s.skill_type==="custom");
   let html="";
@@ -1630,7 +1644,7 @@ function renderAlloCard(skill){
         ${canInvest&&tier<maxTiers?`<button class="invest-btn" onclick="openInvestModal('skill','${skill.id}','${esc(name)}',${nextCost})">Invest (${nextCost} pt${nextCost!==1?'s':''})</button>`
           :tier>=maxTiers?`<span style="font-size:.68rem;color:var(--gold-dim);font-style:italic">Max tier reached</span>`
           :`<button class="invest-btn" disabled>No IP available</button>`}
-      </div>${m&&m.charges?(()=>{const vialActive=!!skill.vial_active;const cur=skill.current_charges!=null?skill.current_charges:m.charges;const isPassive=PASSIVE_BURN_METALS.has(skill.skill_key);const burning=AE_STATE.burning&&AE_STATE.burning[skill.skill_key];const flaring=AE_STATE.flaring&&AE_STATE.flaring[skill.skill_key];return vialActive?`<div class="charges-row"><span class="charges-label">Charges</span><div class="charges-ctrl"><button onclick="adjustCharges('${skill.id}',-1,${m.charges})">-</button><div class="charges-val" id="charges_${skill.id}">${cur}</div><button onclick="adjustCharges('${skill.id}',1,${m.charges})">+</button></div><span class="charges-max">/ ${m.charges}</span><button class="mini-btn" style="font-size:.5rem;padding:2px 6px;margin-left:auto" onclick="setChargesManual('${skill.id}',${m.charges})">Set</button></div>${isPassive?`<div style="display:flex;gap:5px;margin:4px 0 2px;align-items:center"><button class="mini-btn${burning?' go':''}" style="font-size:.48rem;padding:2px 7px" onclick="toggleBurn('${skill.skill_key}')">${burning?'Burning':'Burn'}</button><button class="mini-btn${flaring?' danger':''}" style="font-size:.48rem;padding:2px 7px" onclick="toggleFlare('${skill.skill_key}')" ${!burning?'disabled':''}>${flaring?'Flaring':'Flare'}</button>${burning?`<span style="font-size:.6rem;color:var(--gold);font-style:italic">${flaring?'2x charge/round':'1 charge/round'}</span>`:''}</div>`:''}`:`<div class="charges-row" style="opacity:.5"><span class="charges-label">Charges</span><span style="font-size:.72rem;color:var(--txt-faint);font-style:italic">Locked — drink vial to unlock</span><span class="charges-max" style="margin-left:auto">${cur}/${m.charges}</span></div>`;})():''}${baseHTML}${tiersHTML}
+      </div>${m&&m.charges?(()=>{const vialActive=!!skill.vial_active;const cur=skill.current_charges!=null?skill.current_charges:m.charges;const isPassive=PASSIVE_BURN_METALS.has(skill.skill_key);const burning=AE_STATE.burning&&AE_STATE.burning[skill.skill_key];const flaring=AE_STATE.flaring&&AE_STATE.flaring[skill.skill_key];return vialActive?`<div class="charges-row"><span class="charges-label">Charges</span><div class="charges-ctrl"><button onclick="adjustCharges('${skill.id}',-1,${m.charges})">-</button><div class="charges-val" id="charges_${skill.id}">${cur}</div><button onclick="adjustCharges('${skill.id}',1,${m.charges})">+</button></div><span class="charges-max">/ ${m.charges}</span><button class="mini-btn" style="font-size:.5rem;padding:2px 6px;margin-left:auto" onclick="setChargesManual('${skill.id}',${m.charges})">Set</button></div>${isPassive?`<div style="display:flex;gap:5px;margin:4px 0 2px;align-items:center"><button class="mini-btn${burning?' go':''}" style="font-size:.48rem;padding:2px 7px" onclick="toggleBurn('${skill.skill_key}')">${burning?'Burning':'Burn'}</button><button class="mini-btn${flaring?' danger':''}" style="font-size:.48rem;padding:2px 7px" onclick="toggleFlare('${skill.skill_key}')" ${!burning?'disabled':''}>${flaring?'Flaring':'Flare'}</button>${burning?`<span style="font-size:.6rem;color:var(--gold);font-style:italic">${flaring?'4x charge/round':'1 charge/round'}</span>`:''}</div>`:''}`:`<div class="charges-row" style="opacity:.5"><span class="charges-label">Charges</span><span style="font-size:.72rem;color:var(--txt-faint);font-style:italic">Locked — drink vial to unlock</span><span class="charges-max" style="margin-left:auto">${cur}/${m.charges}</span></div>`;})():''}${baseHTML}${tiersHTML}
     </div>
   </div>`;
 }
@@ -1826,7 +1840,12 @@ async function confirmInvest(){
   if(!_investCtx)return;
   const amt=parseInt(document.getElementById("imAmt").value);
   if(isNaN(amt)||amt<1){toast("Invalid amount");return;}
-  const tpAmt=parseInt(document.getElementById("imTpAmt")?.value)||0;
+  let tpAmt=parseInt(document.getElementById("imTpAmt")?.value)||0;
+  const ipAmt=amt-tpAmt;
+  const avail=ISTATE?.available_points??0;
+  const tp=ISTATE?.training_points??0;
+  if(tpAmt>tp){tpAmt=tp;}
+  if(ipAmt>avail){toast("Not enough Investiture Points (need "+ipAmt+" IP, have "+avail+")");return;}
   const{type,id,upgradeKey,upgradeName}=_investCtx;
   try{
     if(type==="skill")await api("invest_skill",{skill_id:id,amount:amt,tp_amount:tpAmt});
@@ -2627,7 +2646,7 @@ function openSpendTimeModal(){
   const alloSkills=(ISTATE.skills||[]).filter(s=>s.skill_type==="allomancy"&&s.vial_active);
   const eligible=alloSkills.filter(s=>{const mc=METALS[s.skill_key];const cur=s.current_charges!=null?s.current_charges:(mc?mc.charges:0);return mc&&mc.charges>0&&cur>0;});
   if(!eligible.length){toast("No active metals with charges");return;}
-  let html=`<h3>Spend Time (Out of Combat)</h3><div class="msub">1 charge per minute burned, 2 per minute flared</div>`;
+  let html=`<h3>Spend Time (Out of Combat)</h3><div class="msub">1 charge per minute burned, 4 per minute flared</div>`;
   html+=`<div style="margin:12px 0;display:flex;align-items:center;gap:8px">
     <input type="number" id="stTime" min="1" value="10" style="width:70px;background:var(--ink);border:1px solid var(--edge2);color:var(--parch);padding:4px 6px;border-radius:3px;font-size:.85rem" oninput="updateSpendTimePreview()"/>
     <select id="stUnit" style="background:var(--ink);border:1px solid var(--edge2);color:var(--parch);padding:4px 6px;border-radius:3px;font-size:.85rem" onchange="updateSpendTimePreview()">
@@ -2664,7 +2683,7 @@ function updateSpendTimePreview(){
   let lines=[];let anyDepleted=false;
   cbs.forEach(cb=>{
     const key=cb.dataset.key;const cur=parseInt(cb.dataset.cur);const max=parseInt(cb.dataset.max);
-    const rate=flareMap[key]?2:1;
+    const rate=flareMap[key]?4:1;
     const cost=minutes*rate;
     const after=Math.max(0,cur-cost);
     const mc=METALS[key];
@@ -2686,7 +2705,7 @@ async function confirmSpendTime(){
   const updates=[];
   cbs.forEach(cb=>{
     const key=cb.dataset.key;const cur=parseInt(cb.dataset.cur);const skillId=cb.dataset.id;
-    const rate=flareMap[key]?2:1;
+    const rate=flareMap[key]?4:1;
     const cost=minutes*rate;
     const after=Math.max(0,cur-cost);
     const mc=METALS[key];
