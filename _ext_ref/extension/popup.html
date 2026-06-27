@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>D&D Action Tracker</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Crimson+Text:ital,wght@0,400;1,400&display=swap');
+    :root { --bg:#0f0d0a; --s:#1a1610; --b:#3d3020; --gold:#c9a84c; --gd:#7a6230; --t:#e8dfc4; --td:#9a8f72; --green:#3d9e55; }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { width:320px; background:var(--bg); color:var(--t); font-family:'Crimson Text',serif; }
+    .hdr { background:linear-gradient(135deg,#1a1610,#2a2018,#1a1610); border-bottom:2px solid var(--gd); padding:12px 18px; text-align:center; position:relative; }
+    .hdr::before,.hdr::after { content:'⚔'; font-size:10px; color:var(--gd); position:absolute; top:50%; transform:translateY(-50%); }
+    .hdr::before { left:14px; } .hdr::after { right:14px; }
+    .hdr h1 { font-family:'Cinzel',serif; font-size:12px; color:var(--gold); letter-spacing:2px; text-transform:uppercase; }
+    .hdr p  { font-size:10px; color:var(--td); margin-top:2px; font-style:italic; }
+    .sec { padding:11px 16px; border-bottom:1px solid var(--b); }
+    .sec-title { font-family:'Cinzel',serif; font-size:8px; letter-spacing:2px; text-transform:uppercase; color:var(--gd); margin-bottom:8px; }
+    .char-badge { font-family:'Cinzel',serif; font-size:10px; color:var(--gold); background:rgba(201,168,76,0.08); border:1px solid var(--gd); border-radius:3px; padding:4px 10px; display:inline-block; margin-bottom:4px; }
+    .info { font-size:10px; color:var(--td); font-style:italic; line-height:1.5; }
+    label { display:block; font-size:11px; color:var(--td); margin-bottom:2px; }
+    input[type="text"],input[type="number"] { width:100%; background:var(--s); border:1px solid var(--b); border-radius:3px; color:var(--t); font-family:'Crimson Text',serif; font-size:13px; padding:5px 9px; outline:none; margin-bottom:7px; }
+    input:focus { border-color:var(--gd); }
+    .row { display:flex; gap:8px; } .row>div { flex:1; }
+    .score-row { display:flex; gap:8px; }
+    .score-box { flex:1; }
+    .mod-prev { font-family:'Cinzel',serif; font-size:16px; color:var(--gold); text-align:center; border:1px solid var(--b); border-radius:3px; padding:3px 0; background:var(--s); margin-bottom:3px; }
+    .mod-lbl { font-size:8px; color:var(--td); text-align:center; margin-bottom:6px; letter-spacing:1px; }
+    .cb-row { display:flex; align-items:center; gap:6px; cursor:pointer; margin-bottom:5px; font-size:11px; color:var(--td); }
+    .cb-row input { width:auto; margin:0; }
+    .btn { width:100%; padding:8px; border:1px solid var(--gd); background:linear-gradient(135deg,#2a2010,#1a1608); color:var(--gold); font-family:'Cinzel',serif; font-size:10px; letter-spacing:1.5px; text-transform:uppercase; cursor:pointer; border-radius:3px; transition:all 0.2s; }
+    .btn:hover { background:linear-gradient(135deg,#3a3020,#2a2010); } .btn:disabled { opacity:0.4; cursor:default; }
+    .btn.saved { border-color:var(--green); color:var(--green); }
+    .saved-msg { text-align:center; font-size:11px; color:var(--green); margin-top:7px; opacity:0; transition:opacity 0.3s; }
+    .saved-msg.show { opacity:1; }
+    .conn { display:flex; align-items:center; gap:5px; }
+    .dot { width:6px; height:6px; border-radius:50%; background:var(--green); box-shadow:0 0 5px var(--green); }
+  </style>
+</head>
+<body>
+<div class="hdr">
+  <h1>Action Tracker <span style="font-size:9px;opacity:0.6">v1.7</span></h1>
+  <p>D&D Beyond Overlay</p>
+</div>
+
+<div class="sec">
+  <div class="sec-title">Current Sheet</div>
+  <div class="char-badge" id="char-id-display">Detecting…</div>
+  <div class="info">Settings below are saved per character. Open a different sheet to configure it separately. Your name is read automatically from D&amp;D Beyond.</div>
+</div>
+
+<div class="sec">
+  <div class="sec-title">Session</div>
+  <div class="row">
+    <div><label>Campaign / Session ID</label><input type="text" id="sessionId" placeholder="campaign-1" value="campaign-1"/></div>
+    <div><label>Reactions</label><input type="number" id="reactionCount" min="1" max="6" value="2"/></div>
+  </div>
+</div>
+
+<div class="sec">
+  <div class="sec-title">Custom Ability Scores</div>
+  <div class="score-row">
+    <div class="score-box">
+      <label>SANITY (1–30)</label>
+      <input type="number" id="sanityScore" min="1" max="30" value="10"/>
+      <div class="mod-prev" id="sanityMod">+0</div>
+      <div class="mod-lbl">Modifier</div>
+    </div>
+    <div class="score-box">
+      <label>INVESTITURE (1–30)</label>
+      <input type="number" id="investitureScore" min="1" max="30" value="10"/>
+      <div class="mod-prev" id="investitureMod">+0</div>
+      <div class="mod-lbl">Mod = ISM count</div>
+    </div>
+  </div>
+  <label class="cb-row"><input type="checkbox" id="sanProf"/><span>Proficient in <b style="color:#7ad4f8">Sanity</b> saves</span></label>
+  <label class="cb-row"><input type="checkbox" id="invProf"/><span>Proficient in <b style="color:#7af8b8">Investiture</b> saves</span></label>
+</div>
+
+<div class="sec">
+  <div class="sec-title">Connection</div>
+  <div class="conn"><div class="dot"></div><span style="font-size:10px;color:var(--td)">Pre-configured — campaign servers</span></div>
+</div>
+
+<div class="sec">
+  <button class="btn" id="saveBtn">Save Settings</button>
+  <div class="saved-msg" id="savedMsg">✓ Saved — reload your character sheet</div>
+</div>
+<script src="popup.js"></script>
+</body>
+</html>
