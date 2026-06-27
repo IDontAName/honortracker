@@ -118,7 +118,7 @@ async function getPlayerInvestiture(accountId: string) {
     spent_points: spentInSkills + spentInSetItems,
     available_points: regularAvail,
     training_points: trainingPoints,
-    tp_log: pool.tp_log ?? [],
+    tp_log: ((pool.ip_log ?? []) as any[]).filter((e: any) => e.type === "tp"),
     burnout_current: pool.burnout_current ?? 0,
     burnout_upgrades: pool.burnout_upgrades ?? 0,
     investiture_score: pool.investiture_score ?? 10,
@@ -233,8 +233,8 @@ Deno.serve(async (req) => {
       if (tpUse > 0) {
         poolUpd.training_points = state.training_points - tpUse;
         poolUpd.total_points = (state.pool as any).total_points + tpUse;
-        const tpLog = [...((state.pool as any).tp_log ?? []), { amount: -tpUse, note: `Invested into ${(skill as any).skill_name}`, created_at: new Date().toISOString() }];
-        poolUpd.tp_log = tpLog;
+        const ipLog = [...((state.pool as any).ip_log ?? []), { amount: tpUse, note: `TP→IP for ${(skill as any).skill_name}`, created_at: new Date().toISOString(), type: "tp" }];
+        poolUpd.ip_log = ipLog;
       }
       await admin.from("player_investiture").update(poolUpd).eq("account_id", me.id);
       await admin.from("player_skills").update({ points_invested: skill.points_invested + pts }).eq("id", skill_id);
@@ -267,8 +267,8 @@ Deno.serve(async (req) => {
       if (tpUse > 0) {
         poolUpd.training_points = state.training_points - tpUse;
         poolUpd.total_points = (state.pool as any).total_points + tpUse;
-        const tpLog = [...((state.pool as any).tp_log ?? []), { amount: -tpUse, note: `Invested into ${(skill as any).skill_name} upgrade: ${upgrade_name || upgrade_key}`, created_at: new Date().toISOString() }];
-        poolUpd.tp_log = tpLog;
+        const ipLog = [...((state.pool as any).ip_log ?? []), { amount: tpUse, note: `TP→IP for ${(skill as any).skill_name} upgrade: ${upgrade_name || upgrade_key}`, created_at: new Date().toISOString(), type: "tp" }];
+        poolUpd.ip_log = ipLog;
       }
       await admin.from("player_investiture").update(poolUpd).eq("account_id", me.id);
       const { data: existing } = await admin.from("player_skill_upgrades").select("*").eq("skill_id", skill_id).eq("upgrade_key", upgrade_key).maybeSingle();
@@ -353,7 +353,7 @@ Deno.serve(async (req) => {
       if (tpUse > 0) {
         upd.training_points = state.training_points - tpUse;
         upd.total_points = (pool as any).total_points + tpUse;
-        upd.tp_log = [...((pool as any).tp_log ?? []), { amount: -tpUse, note: `Burnout cap upgrade (+${amt})`, created_at: new Date().toISOString() }];
+        upd.ip_log = [...((pool as any).ip_log ?? []), { amount: tpUse, note: `TP→IP for burnout cap upgrade (+${amt})`, created_at: new Date().toISOString(), type: "tp" }];
       }
       await admin.from("player_investiture").update(upd).eq("account_id", me.id);
       await admin.from("dm_console_log").insert({
