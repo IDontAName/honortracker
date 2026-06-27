@@ -112,6 +112,7 @@ async function getPlayerInvestiture(accountId: string) {
     spent_points: spentInSkills + spentInSetItems,
     available_points: regularAvail,
     training_points: trainingPoints,
+    tp_log: pool.tp_log ?? [],
     burnout_current: pool.burnout_current ?? 0,
     burnout_upgrades: pool.burnout_upgrades ?? 0,
     investiture_score: pool.investiture_score ?? 10,
@@ -194,16 +195,18 @@ Deno.serve(async (req) => {
       return json(data);
     }
     if (action === "invest_skill") {
-      const { skill_id, amount, use_training } = payload;
+      const { skill_id, amount, tp_amount } = payload;
       const pts = parseInt(amount);
       if (isNaN(pts) || pts < 1) return json({ error: "Invalid amount" }, 400);
+      const tpUse = Math.max(0, parseInt(tp_amount) || 0);
+      const ipUse = pts - tpUse;
       const { data: skill } = await admin.from("player_skills").select("*").eq("id", skill_id).eq("account_id", me.id).maybeSingle();
       if (!skill) return json({ error: "Skill not found" }, 404);
       const state = await getPlayerInvestiture(me.id);
       const isSignet = skill.skill_type === "signet";
-      const totalAvail = isSignet ? state.available_points + state.training_points : state.available_points;
-      if (totalAvail < pts) return json({ error: "Not enough Investiture Points" }, 400);
-      if (use_training && !isSignet) return json({ error: "Training points can only be used for signets" }, 400);
+      if (tpUse > 0 && !isSignet) return json({ error: "Training points can only be used for signets and burnout" }, 400);
+      if (tpUse > state.training_points) return json({ error: "Not enough Training Points" }, 400);
+      if (ipUse > state.available_points) return json({ error: "Not enough Investiture Points" }, 400);
       if (skill.skill_type === "allomancy" || skill.skill_type === "passive") {
         const maxPts = skill.is_mastered ? 9 : 10;
         if (skill.points_invested + pts > maxPts) return json({ error: `Max ${maxPts} pts for this skill` }, 400);
@@ -216,39 +219,51 @@ Deno.serve(async (req) => {
           if (skill.points_invested + pts > maxCustom) return json({ error: `Max ${maxCustom} pts for this custom item` }, 400);
         }
       }
-      // For signets: deduct training points first if available and requested
-      if (isSignet && state.training_points > 0) {
-        const tpUsed = Math.min(pts, state.training_points);
-        if (tpUsed > 0) {
-          await admin.from("player_investiture").update({ training_points: state.training_points - tpUsed }).eq("account_id", me.id);
-        }
+      const poolUpd: any = { updated_at: new Date().toISOString() };
+      if (tpUse > 0) {
+        poolUpd.training_points = state.training_points - tpUse;
+        poolUpd.total_points = (state.pool as any).total_points + tpUse;
+        const tpLog = [...((state.pool as any).tp_log ?? []), { amount: -tpUse, note: `Invested into ${(skill as any).skill_name}`, created_at: new Date().toISOString() }];
+        poolUpd.tp_log = tpLog;
+      }
+      if (Object.keys(poolUpd).length > 1) {
+        await admin.from("player_investiture").update(poolUpd).eq("account_id", me.id);
       }
       await admin.from("player_skills").update({ points_invested: skill.points_invested + pts }).eq("id", skill_id);
+      const detail = tpUse > 0 && ipUse > 0
+        ? `Invested ${pts} (${tpUse} TP + ${ipUse} IP) into ${(skill as any).skill_name} (${skill.points_invested}→${skill.points_invested + pts})`
+        : tpUse > 0
+        ? `Invested ${pts} TP into ${(skill as any).skill_name} (${skill.points_invested}→${skill.points_invested + pts})`
+        : `Invested ${pts} IP into ${(skill as any).skill_name} (${skill.points_invested}→${skill.points_invested + pts})`;
       await admin.from("dm_console_log").insert({
         account_id: me.id, character_name: me.character_name,
-        event_type: "invest", details: `Invested ${pts} IP into ${skill.skill_name} (${skill.points_invested}→${skill.points_invested + pts})`,
+        event_type: "invest", details: detail,
       });
       return json({ ok: true, new_total: skill.points_invested + pts });
     }
     if (action === "invest_upgrade") {
-      // invest in a signet sub-upgrade
-      const { skill_id, upgrade_key, upgrade_name, amount } = payload;
+      const { skill_id, upgrade_key, upgrade_name, amount, tp_amount } = payload;
       const pts = parseInt(amount);
       if (isNaN(pts) || pts < 1) return json({ error: "Invalid amount" }, 400);
+      const tpUse = Math.max(0, parseInt(tp_amount) || 0);
+      const ipUse = pts - tpUse;
       const { data: skill } = await admin.from("player_skills").select("*").eq("id", skill_id).eq("account_id", me.id).maybeSingle();
       if (!skill) return json({ error: "Skill not found" }, 404);
       const state = await getPlayerInvestiture(me.id);
       const isSignet = skill.skill_type === "signet";
-      const totalAvail = isSignet ? state.available_points + state.training_points : state.available_points;
-      if (totalAvail < pts) return json({ error: "Not enough Investiture Points" }, 400);
-      // For signets: deduct training points first
-      if (isSignet && state.training_points > 0) {
-        const tpUsed = Math.min(pts, state.training_points);
-        if (tpUsed > 0) {
-          await admin.from("player_investiture").update({ training_points: state.training_points - tpUsed }).eq("account_id", me.id);
-        }
+      if (tpUse > 0 && !isSignet) return json({ error: "Training points can only be used for signets and burnout" }, 400);
+      if (tpUse > state.training_points) return json({ error: "Not enough Training Points" }, 400);
+      if (ipUse > state.available_points) return json({ error: "Not enough Investiture Points" }, 400);
+      const poolUpd: any = { updated_at: new Date().toISOString() };
+      if (tpUse > 0) {
+        poolUpd.training_points = state.training_points - tpUse;
+        poolUpd.total_points = (state.pool as any).total_points + tpUse;
+        const tpLog = [...((state.pool as any).tp_log ?? []), { amount: -tpUse, note: `Invested into ${(skill as any).skill_name} upgrade: ${upgrade_name || upgrade_key}`, created_at: new Date().toISOString() }];
+        poolUpd.tp_log = tpLog;
       }
-      // upsert the upgrade row
+      if (Object.keys(poolUpd).length > 1) {
+        await admin.from("player_investiture").update(poolUpd).eq("account_id", me.id);
+      }
       const { data: existing } = await admin.from("player_skill_upgrades").select("*").eq("skill_id", skill_id).eq("upgrade_key", upgrade_key).maybeSingle();
       if (existing) {
         await admin.from("player_skill_upgrades").update({ points_invested: existing.points_invested + pts }).eq("id", existing.id);
@@ -258,7 +273,7 @@ Deno.serve(async (req) => {
       await admin.from("player_skills").update({ points_invested: skill.points_invested + pts }).eq("id", skill_id);
       await admin.from("dm_console_log").insert({
         account_id: me.id, character_name: me.character_name,
-        event_type: "invest", details: `Invested ${pts} IP into ${skill.skill_name} upgrade: ${upgrade_name || upgrade_key}`,
+        event_type: "invest", details: `Invested ${pts}${tpUse>0?` (${tpUse} TP)`:''} into ${(skill as any).skill_name} upgrade: ${upgrade_name || upgrade_key}`,
       });
       return json({ ok: true });
     }
@@ -317,21 +332,25 @@ Deno.serve(async (req) => {
     }
     if (action === "invest_burnout_upgrade") {
       const amt = Math.max(1, parseInt(payload.amount) || 1);
+      const tpUse = Math.max(0, parseInt(payload.tp_amount) || 0);
+      const ipUse = amt - tpUse;
       const state = await getPlayerInvestiture(me.id);
       const hasSignets = state.skills.some((s: any) => s.skill_type === "signet");
       if (!hasSignets) return json({ error: "You need a signet to upgrade burnout caps" }, 400);
-      const totalAvail = state.available_points + state.training_points;
-      if (totalAvail < amt) return json({ error: "Not enough points" }, 400);
+      if (tpUse > state.training_points) return json({ error: "Not enough Training Points" }, 400);
+      if (ipUse > state.available_points) return json({ error: "Not enough Investiture Points" }, 400);
       const pool = state.pool;
       const curUpgrades = pool.burnout_upgrades ?? 0;
-      const tpUsed = Math.min(amt, state.training_points);
-      const ipUsed = amt - tpUsed;
-      const upd: any = { burnout_upgrades: curUpgrades + amt };
-      if (tpUsed > 0) upd.training_points = state.training_points - tpUsed;
+      const upd: any = { burnout_upgrades: curUpgrades + amt, updated_at: new Date().toISOString() };
+      if (tpUse > 0) {
+        upd.training_points = state.training_points - tpUse;
+        upd.total_points = (pool as any).total_points + tpUse;
+        upd.tp_log = [...((pool as any).tp_log ?? []), { amount: -tpUse, note: `Burnout cap upgrade (+${amt})`, created_at: new Date().toISOString() }];
+      }
       await admin.from("player_investiture").update(upd).eq("account_id", me.id);
       await admin.from("dm_console_log").insert({
         account_id: me.id, character_name: me.character_name,
-        event_type: "invest", details: `Upgraded burnout cap by ${amt} (${curUpgrades}→${curUpgrades + amt})`,
+        event_type: "invest", details: `Upgraded burnout cap by ${amt}${tpUse>0?` (${tpUse} TP)`:''} (${curUpgrades}→${curUpgrades + amt})`,
       });
       return json({ ok: true, burnout_upgrades: curUpgrades + amt });
     }
