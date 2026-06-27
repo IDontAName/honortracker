@@ -123,7 +123,7 @@ input,select,textarea{font-family:inherit}
 .subgrp{margin-top:13px}
 .subgrp-head{font-family:'Cinzel',serif;font-size:.68rem;letter-spacing:.13em;text-transform:uppercase;
   color:var(--parch-dim);margin:0 0 8px;padding-bottom:4px;border-bottom:1px dashed var(--edge)}
-.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(275px,1fr));gap:10px}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(275px,1fr));gap:10px}
 .card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--edge);
   border-radius:var(--rad);padding:11px 13px 12px;cursor:pointer;position:relative;overflow:hidden;
   transition:border-color .18s,transform .12s,box-shadow .18s}
@@ -735,6 +735,7 @@ const TKEY="basgiath_session_v1";
 // T1=1, T2=3(+2), T3=6(+3), T4=10(+4). With mastered T1 free: T2=2, T3=5, T4=9
 const ALLO_TIERS=[0,1,3,6,10];
 const ALLO_TIERS_MASTERED=[0,0,2,5,9];
+const ALLO_TIERS_MASTERED_T2=[0,0,0,4,8];
 const SET_TIERS=[0,3,9,21,45]; // Rare/VeryRare/Legendary/Artifact cumulative
 const SET_TIER_NAMES=["—","Rare","Very Rare","Legendary","Artifact"];
 const SET_TIER_COSTS=[0,3,6,12,24]; // cost of each step up
@@ -1530,16 +1531,22 @@ function renderInvestiture(){
   if(!html)html=`<div class="empty">No investable abilities have been granted yet.<br><span style="font-size:.85rem;opacity:.7">The DM assigns access to metals, signets, and custom items from the DM Panel.</span></div>`;
   body.innerHTML=html;
 }
-function calcAlloTier(pts,mastered){
-  const thresholds=mastered?ALLO_TIERS_MASTERED:ALLO_TIERS;
+const MASTERED_T2_METALS=new Set(["copper"]);
+function getAlloThresholds(mastered,metalKey){
+  if(!mastered)return ALLO_TIERS;
+  return MASTERED_T2_METALS.has(metalKey)?ALLO_TIERS_MASTERED_T2:ALLO_TIERS_MASTERED;
+}
+function calcAlloTier(pts,mastered,metalKey){
+  const thresholds=getAlloThresholds(mastered,metalKey);
   let tier=0;for(let i=1;i<=4;i++){if(pts>=thresholds[i])tier=i;}
   return tier;
 }
 function alloTierDesc(metalKey,tier,mastered){
   const m=METALS[metalKey]||(metalKey==="passives"?PASSIVE_METAL_CONTROL:null);if(!m)return"";
-  if(tier===0)return mastered?"<b>Mastered</b> — Tier I granted free. Core Trait active.":"Core Trait active. Invest 1 pt for Tier I.";
+  const freeTier=mastered&&MASTERED_T2_METALS.has(metalKey)?2:1;
+  if(tier===0)return mastered?`<b>Mastered</b> — Tier ${freeTier===2?'I & II':'I'} granted free. Core Trait active.`:"Core Trait active. Invest 1 pt for Tier I.";
   const desc=m.tiers[tier-1]||"";
-  const prefix=mastered&&tier===1?"<b>Mastered</b> — ":"";
+  const prefix=mastered&&tier<=freeTier?"<b>Mastered</b> — ":"";
   return prefix+desc;
 }
 function toggleSection(el){
@@ -1550,12 +1557,13 @@ function renderAlloCard(skill){
   const m=METALS[skill.skill_key]||(skill.skill_key==="passives"?PASSIVE_METAL_CONTROL:null);
   const name=m?m.name:skill.skill_name;
   const nick=m?m.nickname:"";
-  const tier=calcAlloTier(skill.points_invested,skill.is_mastered);
+  const tier=calcAlloTier(skill.points_invested,skill.is_mastered,skill.skill_key);
   const maxPts=skill.is_mastered?9:10;
   const maxTiers=m&&m.tiers?m.tiers.length:4;
-  const thresholds=skill.is_mastered?ALLO_TIERS_MASTERED:ALLO_TIERS;
+  const thresholds=getAlloThresholds(skill.is_mastered,skill.skill_key);
+  const freeTier=MASTERED_T2_METALS.has(skill.skill_key)?2:1;
   const pipCount=Math.min(maxTiers,4);
-  const pipsHTML=`<div class="tier-pips">${Array.from({length:pipCount},(_,i)=>i+1).map(t=>`<div class="tier-pip ${tier>=t?'filled'+(t===pipCount?' t4':''):''}" title="Tier ${t} — ${thresholds[t]||'?'} pts${skill.is_mastered&&t===1?' (free with Mastered)':''}"></div>`).join("")}</div>`;
+  const pipsHTML=`<div class="tier-pips">${Array.from({length:pipCount},(_,i)=>i+1).map(t=>`<div class="tier-pip ${tier>=t?'filled'+(t===pipCount?' t4':''):''}" title="Tier ${t} — ${thresholds[t]||'?'} pts${skill.is_mastered&&t<=freeTier?' (free with Mastered)':''}"></div>`).join("")}</div>`;
   const canInvest=skill.points_invested<maxPts&&ISTATE.available_points>0;
   const nextCost=tier<maxTiers?thresholds[tier+1]-skill.points_invested:0;
   const chargesLabel=m&&m.charges?`${m.charges} charges/gram`:"";
@@ -1935,7 +1943,7 @@ async function renderDmCombatCombined(c){
       for(let i=0;i<rc;i++){const key=i===0?'reaction':`reaction_${i+1}`;actionsRow+=slotHtml(key,'Rct');}
       actionsRow+=`</div>`;
       if(invested>0){
-        actionsRow+=`<div class="dm-action-group-label" style="margin:0">Inv(${invested})</div><div class="dm-action-slots" style="margin:0">`;
+        actionsRow+=`<div class="dm-action-group-label" style="margin:0">Inv (${invested})</div><div class="dm-action-slots" style="margin:0">`;
         for(let i=0;i<invested;i++){actionsRow+=slotHtml(`invested_${i+1}`,'Inv');}
         actionsRow+=`</div>`;
       }
@@ -2025,7 +2033,7 @@ async function loadPlayerDetail(pid,el){
     const signetSkills=skills.filter(s=>s.skill_type==="signet");
     const customSkills=skills.filter(s=>s.skill_type==="custom");
     const skillRowsHTML=(list)=>list.map(s=>{
-      const tier=s.skill_type==="allomancy"||s.skill_type==="passive"?calcAlloTier(s.points_invested,s.is_mastered):null;
+      const tier=s.skill_type==="allomancy"||s.skill_type==="passive"?calcAlloTier(s.points_invested,s.is_mastered,s.skill_key):null;
       const tierText=tier!==null?` — T${tier}`:` — ${s.points_invested}pts`;
       return `<div class="skill-grant-row">
         <span class="skill-grant-name">${esc(s.skill_name)}</span>
@@ -2325,7 +2333,7 @@ function renderActionEconomy(){
   html+=`</div></div>`;
   if(invested>0){
     html+=`<div class="ae-sep"></div>`;
-    html+=`<div class="ae-group"><div class="ae-group-label">Inv(${invested})</div><div class="ae-slots">`;
+    html+=`<div class="ae-group"><div class="ae-group-label">Inv (${invested})</div><div class="ae-slots">`;
     for(let i=0;i<invested;i++){html+=slot(`invested_${i+1}`,'Inv');}
     html+=`</div></div>`;
   }
