@@ -687,6 +687,7 @@ html.theme-parchment{
       <div class="ae-row" id="aeSlots"></div>
       <div class="ae-rest-btns" id="aeRestBtns"></div>
       <details class="ae-drink-wrap" id="aeDrinkWrap"><summary>Vials</summary><div class="ae-drink-btns" id="aeDrinkBtns"></div></details>
+      <button class="mini-btn" id="aeSpendTimeBtn" style="display:none;margin-top:6px;font-size:.55rem;padding:3px 10px" onclick="openSpendTimeModal()">Spend Time (Out of Combat)</button>
     </div>
     <div class="invest-header">
       <div class="ip-pool">
@@ -1629,7 +1630,7 @@ function renderAlloCard(skill){
         ${canInvest&&tier<maxTiers?`<button class="invest-btn" onclick="openInvestModal('skill','${skill.id}','${esc(name)}',${nextCost})">Invest (${nextCost} pt${nextCost!==1?'s':''})</button>`
           :tier>=maxTiers?`<span style="font-size:.68rem;color:var(--gold-dim);font-style:italic">Max tier reached</span>`
           :`<button class="invest-btn" disabled>No IP available</button>`}
-      </div>${m&&m.charges?(()=>{const vialActive=!!skill.vial_active;const cur=skill.current_charges!=null?skill.current_charges:m.charges;const burning=AE_STATE.burning&&AE_STATE.burning[skill.skill_key];const flaring=AE_STATE.flaring&&AE_STATE.flaring[skill.skill_key];return vialActive?`<div class="charges-row"><span class="charges-label">Charges</span><div class="charges-ctrl"><button onclick="adjustCharges('${skill.id}',-1,${m.charges})">-</button><div class="charges-val" id="charges_${skill.id}">${cur}</div><button onclick="adjustCharges('${skill.id}',1,${m.charges})">+</button></div><span class="charges-max">/ ${m.charges}</span><button class="mini-btn" style="font-size:.5rem;padding:2px 6px;margin-left:auto" onclick="setChargesManual('${skill.id}',${m.charges})">Set</button></div><div style="display:flex;gap:5px;margin:4px 0 2px;align-items:center"><button class="mini-btn${burning?' go':''}" style="font-size:.48rem;padding:2px 7px" onclick="toggleBurn('${skill.skill_key}')">${burning?'Burning':'Burn'}</button><button class="mini-btn${flaring?' danger':''}" style="font-size:.48rem;padding:2px 7px" onclick="toggleFlare('${skill.skill_key}')" ${!burning?'disabled':''}>${flaring?'Flaring':'Flare'}</button>${burning?`<span style="font-size:.6rem;color:var(--gold);font-style:italic">${flaring?'2x charge/round':'1 charge/round'}</span>`:''}</div>`:`<div class="charges-row" style="opacity:.5"><span class="charges-label">Charges</span><span style="font-size:.72rem;color:var(--txt-faint);font-style:italic">Locked — drink vial to unlock</span><span class="charges-max" style="margin-left:auto">${cur}/${m.charges}</span></div>`;})():''}${baseHTML}${tiersHTML}
+      </div>${m&&m.charges?(()=>{const vialActive=!!skill.vial_active;const cur=skill.current_charges!=null?skill.current_charges:m.charges;const isPassive=PASSIVE_BURN_METALS.has(skill.skill_key);const burning=AE_STATE.burning&&AE_STATE.burning[skill.skill_key];const flaring=AE_STATE.flaring&&AE_STATE.flaring[skill.skill_key];return vialActive?`<div class="charges-row"><span class="charges-label">Charges</span><div class="charges-ctrl"><button onclick="adjustCharges('${skill.id}',-1,${m.charges})">-</button><div class="charges-val" id="charges_${skill.id}">${cur}</div><button onclick="adjustCharges('${skill.id}',1,${m.charges})">+</button></div><span class="charges-max">/ ${m.charges}</span><button class="mini-btn" style="font-size:.5rem;padding:2px 6px;margin-left:auto" onclick="setChargesManual('${skill.id}',${m.charges})">Set</button></div>${isPassive?`<div style="display:flex;gap:5px;margin:4px 0 2px;align-items:center"><button class="mini-btn${burning?' go':''}" style="font-size:.48rem;padding:2px 7px" onclick="toggleBurn('${skill.skill_key}')">${burning?'Burning':'Burn'}</button><button class="mini-btn${flaring?' danger':''}" style="font-size:.48rem;padding:2px 7px" onclick="toggleFlare('${skill.skill_key}')" ${!burning?'disabled':''}>${flaring?'Flaring':'Flare'}</button>${burning?`<span style="font-size:.6rem;color:var(--gold);font-style:italic">${flaring?'2x charge/round':'1 charge/round'}</span>`:''}</div>`:''}`:`<div class="charges-row" style="opacity:.5"><span class="charges-label">Charges</span><span style="font-size:.72rem;color:var(--txt-faint);font-style:italic">Locked — drink vial to unlock</span><span class="charges-max" style="margin-left:auto">${cur}/${m.charges}</span></div>`;})():''}${baseHTML}${tiersHTML}
     </div>
   </div>`;
 }
@@ -2466,6 +2467,7 @@ async function dmShowIpLog(pid){
 }
 // --- ACTION ECONOMY (Player) ---
 const BASE_METALS=["aluminum","gold","copper","bronze","zinc","brass","iron","steel","tin","pewter"];
+const PASSIVE_BURN_METALS=new Set(["iron","steel","pewter","tin","copper","bronze"]);
 let AE_STATE={};
 function aeModifier(score){return Math.floor((score-10)/2);}
 function getPassiveMetalControl(){
@@ -2528,6 +2530,11 @@ function renderActionEconomy(){
   renderDrinkButtons();
   const drinkWrap=document.getElementById("aeDrinkWrap");
   if(drinkWrap)drinkWrap.style.display=alloSkills.length?'':'none';
+  const spendBtn=document.getElementById("aeSpendTimeBtn");
+  if(spendBtn){
+    const hasActiveCharges=alloSkills.some(s=>s.vial_active&&(s.current_charges!=null?s.current_charges:METALS[s.skill_key]?.charges||0)>0);
+    spendBtn.style.display=hasActiveCharges?'':'none';
+  }
 }
 async function toggleAeSlot(key){
   AE_STATE[key]=!AE_STATE[key];
@@ -2615,6 +2622,91 @@ async function drinkBaseVial(){
   }catch(e){toast("Error: "+e.message);}
 }
 
+function openSpendTimeModal(){
+  const mb=document.getElementById("modalBg"),m=document.getElementById("modal");
+  const alloSkills=(ISTATE.skills||[]).filter(s=>s.skill_type==="allomancy"&&s.vial_active);
+  const eligible=alloSkills.filter(s=>{const mc=METALS[s.skill_key];const cur=s.current_charges!=null?s.current_charges:(mc?mc.charges:0);return mc&&mc.charges>0&&cur>0;});
+  if(!eligible.length){toast("No active metals with charges");return;}
+  let html=`<h3>Spend Time (Out of Combat)</h3><div class="msub">1 charge per minute burned, 2 per minute flared</div>`;
+  html+=`<div style="margin:12px 0;display:flex;align-items:center;gap:8px">
+    <input type="number" id="stTime" min="1" value="10" style="width:70px;background:var(--ink);border:1px solid var(--edge2);color:var(--parch);padding:4px 6px;border-radius:3px;font-size:.85rem" oninput="updateSpendTimePreview()"/>
+    <select id="stUnit" style="background:var(--ink);border:1px solid var(--edge2);color:var(--parch);padding:4px 6px;border-radius:3px;font-size:.85rem" onchange="updateSpendTimePreview()">
+      <option value="min">Minutes</option><option value="hr">Hours</option>
+    </select></div>`;
+  html+=`<div style="margin:8px 0;font-size:.78rem;color:var(--txt-dim)">Select metals to burn during this time:</div>`;
+  html+=`<div id="stMetalList" style="display:flex;flex-direction:column;gap:6px">`;
+  for(const s of eligible){
+    const mc=METALS[s.skill_key];
+    const cur=s.current_charges!=null?s.current_charges:mc.charges;
+    html+=`<div style="display:flex;align-items:center;gap:8px;padding:4px 6px;background:var(--ink);border:1px solid var(--edge2);border-radius:4px">
+      <input type="checkbox" id="st_${s.skill_key}" data-key="${s.skill_key}" data-id="${s.id}" data-cur="${cur}" data-max="${mc.charges}" class="st-metal-cb" onchange="updateSpendTimePreview()"/>
+      <label for="st_${s.skill_key}" style="flex:1;font-size:.8rem;color:var(--parch);cursor:pointer">${esc(mc.name)} <span style="color:var(--txt-faint)">(${cur}/${mc.charges})</span></label>
+      <label style="font-size:.65rem;color:var(--txt-dim);display:flex;align-items:center;gap:3px"><input type="checkbox" class="st-flare-cb" data-key="${s.skill_key}" onchange="updateSpendTimePreview()"/> Flare</label>
+    </div>`;
+  }
+  html+=`</div>`;
+  html+=`<div id="stPreview" style="margin-top:10px;font-size:.78rem;color:var(--txt-dim);min-height:20px"></div>`;
+  html+=`<div class="modal-actions"><button class="mini-btn" onclick="document.getElementById('modalBg').classList.remove('open')">Cancel</button><button class="mini-btn go" id="stConfirmBtn" onclick="confirmSpendTime()">Confirm</button></div>`;
+  m.innerHTML=html;
+  mb.classList.add("open");
+  updateSpendTimePreview();
+}
+function updateSpendTimePreview(){
+  const timeVal=parseInt(document.getElementById("stTime")?.value)||0;
+  const unit=document.getElementById("stUnit")?.value||"min";
+  const minutes=unit==="hr"?timeVal*60:timeVal;
+  const cbs=document.querySelectorAll(".st-metal-cb:checked");
+  const flares=document.querySelectorAll(".st-flare-cb");
+  const flareMap={};flares.forEach(f=>{if(f.checked)flareMap[f.dataset.key]=true;});
+  const preview=document.getElementById("stPreview");
+  if(!preview)return;
+  if(minutes<=0||!cbs.length){preview.innerHTML=`<span style="color:var(--txt-faint);font-style:italic">Select metals and enter time to see preview.</span>`;return;}
+  let lines=[];let anyDepleted=false;
+  cbs.forEach(cb=>{
+    const key=cb.dataset.key;const cur=parseInt(cb.dataset.cur);const max=parseInt(cb.dataset.max);
+    const rate=flareMap[key]?2:1;
+    const cost=minutes*rate;
+    const after=Math.max(0,cur-cost);
+    const mc=METALS[key];
+    const depleted=after===0&&cost>=cur;
+    if(depleted)anyDepleted=true;
+    lines.push(`<div>${mc?mc.name:key}: ${cur} → <b style="color:${depleted?'var(--blood-bright)':'var(--parch)'}"> ${after}</b> <span style="color:var(--txt-faint)">(−${Math.min(cost,cur)}${flareMap[key]?' flaring':''})</span>${depleted?' <span style="color:var(--blood-bright);font-size:.7rem">DEPLETED</span>':''}</div>`);
+  });
+  preview.innerHTML=lines.join("")+(anyDepleted?`<div style="margin-top:4px;color:var(--blood-bright);font-size:.72rem">Some metals will be fully depleted.</div>`:'');
+}
+async function confirmSpendTime(){
+  const timeVal=parseInt(document.getElementById("stTime")?.value)||0;
+  const unit=document.getElementById("stUnit")?.value||"min";
+  const minutes=unit==="hr"?timeVal*60:timeVal;
+  if(minutes<=0){toast("Enter a valid time");return;}
+  const cbs=document.querySelectorAll(".st-metal-cb:checked");
+  if(!cbs.length){toast("Select at least one metal");return;}
+  const flares=document.querySelectorAll(".st-flare-cb");
+  const flareMap={};flares.forEach(f=>{if(f.checked)flareMap[f.dataset.key]=true;});
+  const updates=[];
+  cbs.forEach(cb=>{
+    const key=cb.dataset.key;const cur=parseInt(cb.dataset.cur);const skillId=cb.dataset.id;
+    const rate=flareMap[key]?2:1;
+    const cost=minutes*rate;
+    const after=Math.max(0,cur-cost);
+    const mc=METALS[key];
+    updates.push({skillId,key,name:mc?mc.name:key,before:cur,after,cost:Math.min(cost,cur),flaring:!!flareMap[key]});
+  });
+  const timeLabel=unit==="hr"?`${timeVal} hour${timeVal!==1?'s':''}`:`${minutes} minute${minutes!==1?'s':''}`;
+  if(!confirm(`Spend ${timeLabel} burning ${updates.map(u=>u.name+(u.flaring?' (flaring)':'')).join(', ')}?`))return;
+  try{
+    for(const u of updates){
+      await api("update_charges",{skill_id:u.skillId,value:u.after});
+      const sk=(ISTATE.skills||[]).find(s=>s.id===u.skillId);
+      if(sk)sk.current_charges=u.after;
+    }
+    const summary=updates.map(u=>`${u.name} ${u.before}→${u.after}`).join(', ');
+    await api("update_action_state",{action_state:AE_STATE,log_event:`Spent ${timeLabel} out of combat — ${summary}`});
+    document.getElementById("modalBg").classList.remove("open");
+    toast(`Charges updated for ${timeLabel}`);
+    renderInvestiture();renderActionEconomy();
+  }catch(e){toast("Error: "+e.message);}
+}
 async function toggleBurn(skillKey){
   if(!AE_STATE.burning)AE_STATE.burning={};
   const wasBurning=!!AE_STATE.burning[skillKey];
