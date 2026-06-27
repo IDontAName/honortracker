@@ -1211,7 +1211,7 @@ async function pollScores(){
         ISTATE=state;customItems=ciR.items||[];
         const ciMap={};customItems.forEach(ci=>{ciMap[ci.id]=ci;});
         (ISTATE.skills||[]).forEach(s=>{if(s.skill_type==="custom"&&s.custom_item_id)s._custom_data=ciMap[s.custom_item_id]||null;});
-        renderInvestiture();renderActionEconomy();
+        renderActionEconomy();renderInvestiture();
       }
     }
   }catch(e){}
@@ -1841,10 +1841,10 @@ async function confirmInvest(){
   const amt=parseInt(document.getElementById("imAmt").value);
   if(isNaN(amt)||amt<1){toast("Invalid amount");return;}
   let tpAmt=parseInt(document.getElementById("imTpAmt")?.value)||0;
-  const ipAmt=amt-tpAmt;
   const avail=ISTATE?.available_points??0;
   const tp=ISTATE?.training_points??0;
   if(tpAmt>tp){tpAmt=tp;}
+  const ipAmt=amt-tpAmt;
   if(ipAmt>avail){toast("Not enough Investiture Points (need "+ipAmt+" IP, have "+avail+")");return;}
   const{type,id,upgradeKey,upgradeName}=_investCtx;
   try{

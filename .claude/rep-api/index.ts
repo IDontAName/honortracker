@@ -236,9 +236,7 @@ Deno.serve(async (req) => {
         const tpLog = [...((state.pool as any).tp_log ?? []), { amount: -tpUse, note: `Invested into ${(skill as any).skill_name}`, created_at: new Date().toISOString() }];
         poolUpd.tp_log = tpLog;
       }
-      if (Object.keys(poolUpd).length > 1) {
-        await admin.from("player_investiture").update(poolUpd).eq("account_id", me.id);
-      }
+      await admin.from("player_investiture").update(poolUpd).eq("account_id", me.id);
       await admin.from("player_skills").update({ points_invested: skill.points_invested + pts }).eq("id", skill_id);
       const detail = tpUse > 0 && ipUse > 0
         ? `Invested ${pts} (${tpUse} TP + ${ipUse} IP) into ${(skill as any).skill_name} (${skill.points_invested}→${skill.points_invested + pts})`
@@ -272,9 +270,7 @@ Deno.serve(async (req) => {
         const tpLog = [...((state.pool as any).tp_log ?? []), { amount: -tpUse, note: `Invested into ${(skill as any).skill_name} upgrade: ${upgrade_name || upgrade_key}`, created_at: new Date().toISOString() }];
         poolUpd.tp_log = tpLog;
       }
-      if (Object.keys(poolUpd).length > 1) {
-        await admin.from("player_investiture").update(poolUpd).eq("account_id", me.id);
-      }
+      await admin.from("player_investiture").update(poolUpd).eq("account_id", me.id);
       const { data: existing } = await admin.from("player_skill_upgrades").select("*").eq("skill_id", skill_id).eq("upgrade_key", upgrade_key).maybeSingle();
       if (existing) {
         await admin.from("player_skill_upgrades").update({ points_invested: existing.points_invested + pts }).eq("id", existing.id);
@@ -343,8 +339,9 @@ Deno.serve(async (req) => {
     }
     if (action === "invest_burnout_upgrade") {
       const amt = Math.max(1, parseInt(payload.amount) || 1);
-      const tpUse = Math.max(0, parseInt(payload.tp_amount) || 0);
+      const tpUse = Math.min(Math.max(0, parseInt(payload.tp_amount) || 0), amt);
       const ipUse = amt - tpUse;
+      if (ipUse < 0) return json({ error: "Invalid point distribution" }, 400);
       const state = await getPlayerInvestiture(me.id);
       const hasSignets = state.skills.some((s: any) => s.skill_type === "signet");
       if (!hasSignets) return json({ error: "You need a signet to upgrade burnout caps" }, 400);
