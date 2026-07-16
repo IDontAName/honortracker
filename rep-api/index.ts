@@ -87,17 +87,18 @@ const LEVEL_IP: Record<number, number> = {
 };
 
 async function getPlayerInvestiture(accountId: string) {
-  const [poolR, skillsR, upgradesR, setItemsR] = await Promise.all([
+  const [poolR, skillsR, setItemsR] = await Promise.all([
     admin.from("player_investiture").select("*").eq("account_id", accountId).maybeSingle(),
     admin.from("player_skills").select("*").eq("account_id", accountId).order("sort_order"),
-    admin.from("player_skill_upgrades").select("*"),
     admin.from("player_set_items").select("*").eq("account_id", accountId).order("slot"),
   ]);
   const pool = (poolR.data as any) ?? { account_id: accountId, level: 1, total_points: 0, ip_log: [] };
   const skills = (skillsR.data ?? []) as any[];
-  const upgrades = (upgradesR.data ?? []) as any[];
-  // attach upgrades to skills
   const skillIds = new Set(skills.map((s:any)=>s.id));
+  const upgradesR = skillIds.size > 0
+    ? await admin.from("player_skill_upgrades").select("*").in("skill_id", [...skillIds])
+    : { data: [] };
+  const upgrades = (upgradesR.data ?? []) as any[];
   const upgMap: Record<string,any[]> = {};
   for (const u of upgrades) {
     if (!skillIds.has(u.skill_id)) continue;
@@ -233,7 +234,7 @@ Deno.serve(async (req) => {
       if (tpUse > 0) {
         poolUpd.training_points = state.training_points - tpUse;
         poolUpd.total_points = (state.pool as any).total_points + tpUse;
-        const ipLog = [...((state.pool as any).ip_log ?? []), { amount: tpUse, note: `TP→IP for ${(skill as any).skill_name}`, created_at: new Date().toISOString(), type: "tp" }];
+        const ipLog = [...((state.pool as any).ip_log ?? []), { amount: -tpUse, note: `TP→IP for ${(skill as any).skill_name}`, created_at: new Date().toISOString(), type: "tp" }];
         poolUpd.ip_log = ipLog;
       }
       await admin.from("player_investiture").update(poolUpd).eq("account_id", me.id);
@@ -267,7 +268,7 @@ Deno.serve(async (req) => {
       if (tpUse > 0) {
         poolUpd.training_points = state.training_points - tpUse;
         poolUpd.total_points = (state.pool as any).total_points + tpUse;
-        const ipLog = [...((state.pool as any).ip_log ?? []), { amount: tpUse, note: `TP→IP for ${(skill as any).skill_name} upgrade: ${upgrade_name || upgrade_key}`, created_at: new Date().toISOString(), type: "tp" }];
+        const ipLog = [...((state.pool as any).ip_log ?? []), { amount: -tpUse, note: `TP→IP for ${(skill as any).skill_name} upgrade: ${upgrade_name || upgrade_key}`, created_at: new Date().toISOString(), type: "tp" }];
         poolUpd.ip_log = ipLog;
       }
       await admin.from("player_investiture").update(poolUpd).eq("account_id", me.id);
@@ -353,7 +354,7 @@ Deno.serve(async (req) => {
       if (tpUse > 0) {
         upd.training_points = state.training_points - tpUse;
         upd.total_points = (pool as any).total_points + tpUse;
-        upd.ip_log = [...((pool as any).ip_log ?? []), { amount: tpUse, note: `TP→IP for burnout cap upgrade (+${amt})`, created_at: new Date().toISOString(), type: "tp" }];
+        upd.ip_log = [...((pool as any).ip_log ?? []), { amount: -tpUse, note: `TP→IP for burnout cap upgrade (+${amt})`, created_at: new Date().toISOString(), type: "tp" }];
       }
       await admin.from("player_investiture").update(upd).eq("account_id", me.id);
       await admin.from("dm_console_log").insert({
@@ -724,7 +725,7 @@ Deno.serve(async (req) => {
       const { data: pool } = await admin.from("player_investiture").select("*").eq("account_id", target_account_id).maybeSingle();
       if (!pool) return json({ error: "Player has no investiture pool" }, 404);
       const newTP = Math.max(0, (pool as any).training_points + pts);
-      const logEntry = { amount: pts, note: note || `Training points ${pts > 0 ? "granted" : "removed"} by DM`, created_at: new Date().toISOString(), type: "training" };
+      const logEntry = { amount: pts, note: note || `Training points ${pts > 0 ? "granted" : "removed"} by DM`, created_at: new Date().toISOString(), type: "tp" };
       const log = [...((pool as any).ip_log || []), logEntry];
       await admin.from("player_investiture").update({ training_points: newTP, ip_log: log }).eq("account_id", target_account_id);
       return json({ ok: true, training_points: newTP });

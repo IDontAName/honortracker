@@ -1860,7 +1860,7 @@ async function confirmInvest(){
 }
 async function showIpLog(){
   const mb=document.getElementById("modalBg"),m=document.getElementById("modal");
-  const log=(ISTATE?.pool?.ip_log||[]).slice().reverse();
+  const log=(ISTATE?.pool?.ip_log||[]).filter(e=>e.type!=="tp").slice().reverse();
   m.innerHTML=`<h3>Investiture Point Log</h3><div class="msub">Full history of IP gains and refunds.</div>
     <div style="max-height:55vh;overflow-y:auto">
     ${log.length?log.map(e=>`<div class="ip-log-item">
@@ -2471,7 +2471,7 @@ async function dmShowIpLog(pid){
   const mb=document.getElementById("modalBg"),m=document.getElementById("modal");
   try{
     const state=await api("dm_get_player_investiture",{target_account_id:pid});
-    const log=(state.pool?.ip_log||[]).slice().reverse();
+    const log=(state.pool?.ip_log||[]).filter(e=>e.type!=="tp").slice().reverse();
     m.innerHTML=`<h3>IP Log</h3><div class="msub">Full investiture point history.</div>
       <div style="max-height:55vh;overflow-y:auto">
       ${log.length?log.map(e=>`<div class="ip-log-item">
